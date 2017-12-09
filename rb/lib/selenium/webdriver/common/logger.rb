@@ -1,5 +1,3 @@
-# encoding: utf-8
-#
 # Licensed to the Software Freedom Conservancy (SFC) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -101,13 +99,20 @@ module Selenium
       end
 
       #
-      # Marks code as deprecated with replacement.
+      # Marks code as deprecated with/without replacement.
       #
       # @param [String] old
-      # @param [String] new
+      # @param [String, nil] new
       #
-      def deprecate(old, new)
-        warn "[DEPRECATION] #{old} is deprecated. Use #{new} instead."
+      def deprecate(old, new = nil)
+        message = "[DEPRECATION] #{old} is deprecated"
+        message << if new
+                     ". Use #{new} instead."
+                   else
+                     ' and will be removed in the next releases.'
+                   end
+
+        warn message
       end
 
       private
@@ -115,12 +120,20 @@ module Selenium
       def create_logger(output)
         logger = ::Logger.new(output)
         logger.progname = 'Selenium'
-        logger.level = ($DEBUG ? DEBUG : WARN)
+        logger.level = default_level
         logger.formatter = proc do |severity, time, progname, msg|
           "#{time.strftime('%F %T')} #{severity} #{progname} #{msg}\n"
         end
 
         logger
+      end
+
+      def default_level
+        if $DEBUG || ENV.key?('DEBUG')
+          DEBUG
+        else
+          WARN
+        end
       end
     end # Logger
   end # WebDriver

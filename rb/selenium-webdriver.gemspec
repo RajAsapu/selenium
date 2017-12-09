@@ -1,11 +1,9 @@
-# -*- encoding: utf-8 -*-
-
 root = File.expand_path(File.dirname(__FILE__))
 raise "cwd must be #{root} when reading gemspec" if root != Dir.pwd
 
 Gem::Specification.new do |s|
   s.name = 'selenium-webdriver'
-  s.version = '3.5.0'
+  s.version = '3.8.0'
 
   s.authors = ['Alex Rodionov', 'Titus Fortner']
   s.email = ['p0deje@gmail.com', 'titusfortner@gmail.com']
@@ -14,7 +12,7 @@ It aims to mimic the behaviour of a real user, and as such interacts with the
 HTML of the application.'
   s.summary = 'The next generation developer focused tool for automated testing of webapps'
   s.homepage = 'https://github.com/seleniumhq/selenium'
-  s.licenses = ['Apache']
+  s.license = 'Apache-2.0'
 
   s.required_rubygems_version = Gem::Requirement.new('> 1.3.1') if s.respond_to? :required_rubygems_version=
   s.required_ruby_version = Gem::Requirement.new('>= 2.0')
@@ -29,4 +27,5 @@ HTML of the application.'
   s.add_development_dependency 'rack', ['~> 1.0']
   s.add_development_dependency 'webmock', ['~> 2.0']
   s.add_development_dependency 'yard', ['~> 0.9.9']
+  s.add_development_dependency 'rubocop', ['~> 0.50.0']
 end

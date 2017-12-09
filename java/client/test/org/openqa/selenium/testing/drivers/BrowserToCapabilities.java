@@ -19,11 +19,12 @@ package org.openqa.selenium.testing.drivers;
 
 import static org.openqa.selenium.remote.CapabilityType.HAS_NATIVE_EVENTS;
 
+import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.remote.DesiredCapabilities;
 
 public class BrowserToCapabilities {
-  public static DesiredCapabilities of(Browser browser) {
+  public static Capabilities of(Browser browser) {
     if (browser == null) {
       return null;
     }
@@ -53,10 +54,6 @@ public class BrowserToCapabilities {
 
       case operablink:
         caps = DesiredCapabilities.operaBlink();
-        break;
-
-      case phantomjs:
-        caps = DesiredCapabilities.phantomjs();
         break;
 
       case safari:

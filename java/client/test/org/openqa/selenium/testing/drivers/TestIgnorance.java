@@ -24,17 +24,16 @@ import static org.openqa.selenium.testing.Driver.ALL;
 import static org.openqa.selenium.testing.Driver.CHROME;
 import static org.openqa.selenium.testing.Driver.EDGE;
 import static org.openqa.selenium.testing.Driver.FIREFOX;
+import static org.openqa.selenium.testing.Driver.GRID;
 import static org.openqa.selenium.testing.Driver.HTMLUNIT;
 import static org.openqa.selenium.testing.Driver.IE;
 import static org.openqa.selenium.testing.Driver.MARIONETTE;
-import static org.openqa.selenium.testing.Driver.PHANTOMJS;
 import static org.openqa.selenium.testing.Driver.REMOTE;
 import static org.openqa.selenium.testing.Driver.SAFARI;
 import static org.openqa.selenium.testing.drivers.Browser.chrome;
 import static org.openqa.selenium.testing.drivers.Browser.htmlunit;
 import static org.openqa.selenium.testing.drivers.Browser.ie;
 import static org.openqa.selenium.testing.drivers.Browser.opera;
-import static org.openqa.selenium.testing.drivers.Browser.phantomjs;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
@@ -55,7 +54,7 @@ import java.util.Set;
 public class TestIgnorance {
 
   private Set<Browser> alwaysNativeEvents = ImmutableSet.of(chrome, ie, opera);
-  private Set<Browser> neverNativeEvents = ImmutableSet.of(htmlunit, phantomjs);
+  private Set<Browser> neverNativeEvents = ImmutableSet.of(htmlunit);
   private IgnoreComparator ignoreComparator = new IgnoreComparator();
   private Set<String> methods = Sets.newHashSet();
   private Set<String> only = Sets.newHashSet();
@@ -167,8 +166,13 @@ public class TestIgnorance {
   }
 
   private void addIgnoresForBrowser(Browser browser, IgnoreComparator comparator) {
-    if (Boolean.getBoolean("selenium.browser.remote") || SauceDriver.shouldUseSauce()) {
+    if (Boolean.getBoolean("selenium.browser.remote")
+        || Boolean.getBoolean("selenium.browser.grid")
+        || SauceDriver.shouldUseSauce()) {
       comparator.addDriver(REMOTE);
+    }
+    if (Boolean.getBoolean("selenium.browser.grid")) {
+      comparator.addDriver(GRID);
     }
 
     switch (browser) {
@@ -206,10 +210,6 @@ public class TestIgnorance {
 
       case operablink:
         comparator.addDriver(CHROME);
-        break;
-
-      case phantomjs:
-        comparator.addDriver(PHANTOMJS);
         break;
 
       case safari:

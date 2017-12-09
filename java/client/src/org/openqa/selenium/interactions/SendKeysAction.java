@@ -21,9 +21,10 @@ import com.google.common.collect.ImmutableList;
 
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.internal.KeysRelatedAction;
-import org.openqa.selenium.internal.Locatable;
+import org.openqa.selenium.interactions.internal.Locatable;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Sending a sequence of keys to an element.
@@ -40,6 +41,10 @@ public class SendKeysAction extends KeysRelatedAction implements Action {
       Locatable locationProvider,
       CharSequence... keysToSend) {
     super(keyboard, mouse, locationProvider);
+
+    if (keysToSend == null || keysToSend.length == 0) {
+      throw new IllegalArgumentException("Keys should be a not null CharSequence");
+    }
     this.keysToSend = keysToSend;
   }
 

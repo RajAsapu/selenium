@@ -25,7 +25,6 @@ import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
@@ -188,11 +187,7 @@ public class ApacheHttpClient implements org.openqa.selenium.remote.http.HttpCli
       get.setHeader("Accept", "application/json; charset=utf-8");
       org.apache.http.HttpResponse newResponse = client.execute(targetHost, get, context);
       return followRedirects(client, context, newResponse, redirectCount + 1);
-    } catch (URISyntaxException e) {
-      throw new WebDriverException(e);
-    } catch (ClientProtocolException e) {
-      throw new WebDriverException(e);
-    } catch (IOException e) {
+    } catch (URISyntaxException | IOException e) {
       throw new WebDriverException(e);
     }
   }

@@ -1,4 +1,4 @@
-﻿// <copyright file="FirefoxOptions.cs" company="WebDriver Committers">
+// <copyright file="FirefoxOptions.cs" company="WebDriver Committers">
 // Licensed to the Software Freedom Conservancy (SFC) under one
 // or more contributor license agreements. See the NOTICE file
 // distributed with this work for additional information
@@ -48,6 +48,8 @@ namespace OpenQA.Selenium.Firefox
     /// </example>
     public class FirefoxOptions : DriverOptions
     {
+        private const string BrowserNameValue = "firefox";
+
         private const string IsMarionetteCapability = "marionette";
         private const string FirefoxLegacyProfileCapability = "firefox_profile";
         private const string FirefoxLegacyBinaryCapability = "firefox_binary";
@@ -73,6 +75,20 @@ namespace OpenQA.Selenium.Firefox
         public FirefoxOptions()
             : base()
         {
+            this.BrowserName = BrowserNameValue;
+            /*capabilityName == IsMarionetteCapability ||
+                            capabilityName == FirefoxLegacyProfileCapability ||
+                            capabilityName == FirefoxLegacyBinaryCapability ||
+                            capabilityName == FirefoxOptionsCapability)*/
+            this.AddKnownCapabilityName(FirefoxOptions.FirefoxOptionsCapability, "current FirefoxOptions class instance");
+            this.AddKnownCapabilityName(FirefoxOptions.IsMarionetteCapability, "UseLegacyImplementation property");
+            this.AddKnownCapabilityName(FirefoxOptions.FirefoxProfileCapability, "Profile property");
+            this.AddKnownCapabilityName(FirefoxOptions.FirefoxBinaryCapability, "BrowserExecutableLocation property");
+            this.AddKnownCapabilityName(FirefoxOptions.FirefoxArgumentsCapability, "AddArguments method");
+            this.AddKnownCapabilityName(FirefoxOptions.FirefoxPrefsCapability, "SetPreference method");
+            this.AddKnownCapabilityName(FirefoxOptions.FirefoxLogCapability, "LogLevel property");
+            this.AddKnownCapabilityName(FirefoxOptions.FirefoxLegacyProfileCapability, "Profile property");
+            this.AddKnownCapabilityName(FirefoxOptions.FirefoxLegacyBinaryCapability, "BrowserExecutableLocation property");
         }
 
         /// <summary>
@@ -82,6 +98,7 @@ namespace OpenQA.Selenium.Firefox
         /// <param name="binary">The <see cref="FirefoxBinary"/> to use in the options.</param>
         internal FirefoxOptions(FirefoxProfile profile, FirefoxBinary binary)
         {
+            this.BrowserName = BrowserNameValue;
             if (profile != null)
             {
                 this.profile = profile;
@@ -267,17 +284,10 @@ namespace OpenQA.Selenium.Firefox
         /// existing value with the new value in <paramref name="capabilityValue"/></remarks>
         public void AddAdditionalCapability(string capabilityName, object capabilityValue, bool isGlobalCapability)
         {
-            if (capabilityName == IsMarionetteCapability ||
-                capabilityName == FirefoxProfileCapability ||
-                capabilityName == FirefoxBinaryCapability ||
-                capabilityName == FirefoxLegacyProfileCapability ||
-                capabilityName == FirefoxLegacyBinaryCapability ||
-                capabilityName == FirefoxArgumentsCapability ||
-                capabilityName == FirefoxLogCapability ||
-                capabilityName == FirefoxPrefsCapability ||
-                capabilityName == FirefoxOptionsCapability)
+            if (this.IsKnownCapabilityName(capabilityName))
             {
-                string message = string.Format(CultureInfo.InvariantCulture, "There is already an option for the {0} capability. Please use that instead.", capabilityName);
+                string typeSafeOptionName = this.GetTypeSafeOptionName(capabilityName);
+                string message = string.Format(CultureInfo.InvariantCulture, "There is already an option for the {0} capability. Please use the {1} instead.", capabilityName, typeSafeOptionName);
                 throw new ArgumentException(message, "capabilityName");
             }
 
@@ -304,7 +314,7 @@ namespace OpenQA.Selenium.Firefox
         /// <returns>The DesiredCapabilities for Firefox with these options.</returns>
         public override ICapabilities ToCapabilities()
         {
-            DesiredCapabilities capabilities = DesiredCapabilities.Firefox();
+            DesiredCapabilities capabilities = GenerateDesiredCapabilities(this.isMarionette);
             if (this.isMarionette)
             {
                 Dictionary<string, object> firefoxOptions = this.GenerateFirefoxOptionsDictionary();
@@ -312,9 +322,13 @@ namespace OpenQA.Selenium.Firefox
             }
             else
             {
-                capabilities.SetCapability(IsMarionetteCapability, this.isMarionette);
                 if (this.profile != null)
                 {
+                    if (this.Proxy != null)
+                    {
+                        this.profile.InternalSetProxyPreferences(this.Proxy);
+                    }
+
                     capabilities.SetCapability(FirefoxProfileCapability, this.profile.ToBase64String());
                 }
 
@@ -355,12 +369,15 @@ namespace OpenQA.Selenium.Firefox
             }
             else
             {
-                using (FirefoxBinary executablePathBinary = new FirefoxBinary())
+                if (!this.isMarionette)
                 {
-                    string executablePath = executablePathBinary.BinaryExecutable.ExecutablePath;
-                    if (!string.IsNullOrEmpty(executablePath))
+                    using (FirefoxBinary executablePathBinary = new FirefoxBinary())
                     {
-                        firefoxOptions[FirefoxBinaryCapability] = executablePath;
+                        string executablePath = executablePathBinary.BinaryExecutable.ExecutablePath;
+                        if (!string.IsNullOrEmpty(executablePath))
+                        {
+                            firefoxOptions[FirefoxBinaryCapability] = executablePath;
+                        }
                     }
                 }
             }

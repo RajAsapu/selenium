@@ -9,7 +9,6 @@ using OpenQA.Selenium.Internal;
 namespace OpenQA.Selenium
 {
     [TestFixture]
-    [IgnoreBrowser(Browser.Safari)]
     public class CookieImplementationTest : DriverTestFixture
     {
         private Random random = new Random();
@@ -624,6 +623,7 @@ namespace OpenQA.Selenium
         }
 
         [Test]
+        [IgnoreBrowser(Browser.Firefox)]
         public void ShouldNotShowCookieAddedToDifferentDomain()
         {
             if (!CheckIsOnValidHostNameForCookieTests())

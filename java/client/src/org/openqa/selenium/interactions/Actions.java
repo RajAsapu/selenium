@@ -23,6 +23,7 @@ import static org.openqa.selenium.interactions.PointerInput.MouseButton.RIGHT;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.UnsupportedCommandException;
@@ -30,7 +31,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.PointerInput.Origin;
 import org.openqa.selenium.interactions.internal.MouseAction.Button;
-import org.openqa.selenium.internal.Locatable;
+import org.openqa.selenium.interactions.internal.Locatable;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -62,7 +63,6 @@ public class Actions {
   private final Keyboard jsonKeyboard;
   private final Mouse jsonMouse;
   protected CompositeAction action = new CompositeAction();
-  private RuntimeException actionsException;
 
   public Actions(WebDriver driver) {
     this.driver = Preconditions.checkNotNull(driver);
@@ -184,6 +184,8 @@ public class Actions {
    *
    * @param keys The keys.
    * @return A self reference.
+   *
+   * @throws IllegalArgumentException if keys is null
    */
   public Actions sendKeys(CharSequence... keys) {
     if (isBuildingActions()) {
@@ -204,6 +206,8 @@ public class Actions {
    * @param target element to focus on.
    * @param keys The keys.
    * @return A self reference.
+   *
+   * @throws IllegalArgumentException if keys is null
    */
   public Actions sendKeys(WebElement target, CharSequence... keys) {
     if (isBuildingActions()) {
@@ -223,6 +227,9 @@ public class Actions {
   }
 
   private Actions sendKeysInTicks(CharSequence... keys) {
+    if (keys == null) {
+      throw new IllegalArgumentException("Keys should be a not null CharSequence");
+    }
     for (CharSequence key : keys) {
       key.codePoints().forEach(codePoint -> {
         tick(defaultKeyboard.createKeyDown(codePoint));
@@ -507,7 +514,6 @@ public class Actions {
    * @param pause pause duration, in milliseconds.
    * @return A self reference.
    */
-  @Deprecated
   public Actions pause(long pause) {
     if (isBuildingActions()) {
       action.addAction(new PauseAction(pause));
@@ -541,17 +547,12 @@ public class Actions {
     for (Interaction action : actions) {
       Sequence sequence = getSequence(action.getSource());
       sequence.addAction(action);
-      seenSources.remove(action.getSource());
     }
 
     // And now pad the remaining sequences with a pause.
-    for (InputSource source : seenSources) {
+    Set<InputSource> unseen = Sets.difference(sequences.keySet(), seenSources);
+    for (InputSource source : unseen) {
       getSequence(source).addAction(new Pause(source, Duration.ZERO));
-    }
-
-    if (isBuildingActions()) {
-      actionsException = new IllegalArgumentException(
-          "You may not use new style interactions with old style actions");
     }
 
     return this;

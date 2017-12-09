@@ -19,7 +19,6 @@ import pytest
 
 from selenium.common.exceptions import (
     ElementNotSelectableException,
-    InvalidElementStateException,
     NoSuchElementException,
     UnexpectedTagNameException)
 from selenium.webdriver.support.ui import Select
@@ -45,8 +44,8 @@ def testSelectByIndexSingle(driver, pages):
 
 @pytest.mark.xfail_chrome
 @pytest.mark.xfail_firefox
-@pytest.mark.xfail_marionette(raises=InvalidElementStateException)
-@pytest.mark.xfail_phantomjs
+@pytest.mark.xfail_remote
+@pytest.mark.xfail_marionette
 @pytest.mark.xfail_safari
 def testSelectDisabledByIndexShouldThrowException(driver, pages):
     pages.load("formPage.html")
@@ -67,8 +66,8 @@ def testSelectByValueSingle(driver, pages):
 
 @pytest.mark.xfail_chrome
 @pytest.mark.xfail_firefox
-@pytest.mark.xfail_marionette(raises=InvalidElementStateException)
-@pytest.mark.xfail_phantomjs
+@pytest.mark.xfail_remote
+@pytest.mark.xfail_marionette
 @pytest.mark.xfail_safari
 def testSelectDisabledByValueShouldThrowException(driver, pages):
     pages.load("formPage.html")
@@ -90,7 +89,6 @@ def testSelectByVisibleTextSingle(driver, pages):
 
 @pytest.mark.xfail_chrome(
     reason='https://bugs.chromium.org/p/chromedriver/issues/detail?id=822')
-@pytest.mark.xfail_phantomjs
 def testSelectByVisibleTextShouldNormalizeSpaces(driver, pages):
     pages.load("formPage.html")
 
@@ -104,8 +102,8 @@ def testSelectByVisibleTextShouldNormalizeSpaces(driver, pages):
 
 @pytest.mark.xfail_chrome
 @pytest.mark.xfail_firefox
-@pytest.mark.xfail_marionette(raises=InvalidElementStateException)
-@pytest.mark.xfail_phantomjs
+@pytest.mark.xfail_remote
+@pytest.mark.xfail_marionette
 @pytest.mark.xfail_safari
 def testSelectDisabledByVisibleTextShouldThrowException(driver, pages):
     pages.load("formPage.html")

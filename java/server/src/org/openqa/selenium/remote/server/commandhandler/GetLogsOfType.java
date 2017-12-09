@@ -20,8 +20,7 @@ package org.openqa.selenium.remote.server.commandhandler;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.openqa.selenium.remote.http.HttpMethod.POST;
 
-import com.google.gson.Gson;
-
+import org.openqa.selenium.json.Json;
 import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.remote.ErrorCodes;
@@ -34,22 +33,23 @@ import org.openqa.selenium.remote.server.log.LoggingManager;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 
 public class GetLogsOfType implements CommandHandler {
 
-  private final Gson gson;
+  private final Json json;
   private final ActiveSession session;
 
-  public GetLogsOfType(Gson gson, ActiveSession session) {
-    this.gson = gson;
-    this.session = session;
+  public GetLogsOfType(Json json, ActiveSession session) {
+    this.json = Objects.requireNonNull(json);
+    this.session = Objects.requireNonNull(session);
   }
 
   @Override
   public void execute(HttpRequest req, HttpResponse resp) throws IOException {
     String originalPayload = req.getContentString();
 
-    Map<?, ?> args = gson.fromJson(originalPayload, Map.class);
+    Map<?, ?> args = json.toType(originalPayload, Json.MAP_TYPE);
     String type = (String) args.get("type");
 
     if (!LogType.SERVER.equals(type)) {

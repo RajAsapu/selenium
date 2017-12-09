@@ -21,22 +21,19 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableMap;
 
 import com.thoughtworks.selenium.CommandProcessor;
 import com.thoughtworks.selenium.SeleniumException;
 
-import org.openqa.selenium.ImmutableCapabilities;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.remote.CommandExecutor;
 import org.openqa.selenium.remote.DesiredCapabilities;
-import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.remote.SessionId;
 import org.openqa.selenium.remote.server.ActiveSession;
-import org.openqa.selenium.remote.server.ActiveSessionCommandExecutor;
 import org.openqa.selenium.remote.server.ActiveSessionFactory;
 import org.openqa.selenium.remote.server.ActiveSessionListener;
 import org.openqa.selenium.remote.server.ActiveSessions;
-import org.openqa.selenium.remote.server.NewSessionPayload;
+import org.openqa.selenium.remote.NewSessionPayload;
+import org.openqa.selenium.remote.server.NewSessionPipeline;
 import org.openqa.selenium.remote.server.WebDriverServlet;
 
 import java.io.IOException;
@@ -58,8 +55,9 @@ import javax.servlet.http.HttpServletResponse;
 public class WebDriverBackedSeleniumServlet extends HttpServlet {
 
   // Prepare the shared set of thingies
-  static final Map<SessionId, CommandProcessor> PROCESSORS = new ConcurrentHashMap<>();
+  private static final Map<SessionId, CommandProcessor> PROCESSORS = new ConcurrentHashMap<>();
 
+  private NewSessionPipeline pipeline;
   private ActiveSessions sessions;
   private ActiveSessionListener listener;
 
@@ -78,6 +76,8 @@ public class WebDriverBackedSeleniumServlet extends HttpServlet {
         PROCESSORS.remove(session.getId());
       }
     };
+
+    this.pipeline = NewSessionPipeline.builder().add(new ActiveSessionFactory()).create();
   }
 
   @Override
@@ -215,12 +215,10 @@ public class WebDriverBackedSeleniumServlet extends HttpServlet {
           return;
       }
 
-      try {
-        try (NewSessionPayload payload = NewSessionPayload.create(caps)) {
-          ActiveSession session = new ActiveSessionFactory().createSession(payload);
-          sessions.put(session);
-          sessionId = session.getId();
-        }
+      try (NewSessionPayload payload = NewSessionPayload.create(caps)) {
+        ActiveSession session = pipeline.createNewSession(payload);
+        sessions.put(session);
+        sessionId = session.getId();
       } catch (Exception e) {
         log("Unable to start session", e);
         sendError(
@@ -236,12 +234,9 @@ public class WebDriverBackedSeleniumServlet extends HttpServlet {
       sendError(resp, "Attempt to use non-existent session: " + sessionId);
       return;
     }
-    CommandExecutor executor = new ActiveSessionCommandExecutor(session);
-    WebDriver driver = new RemoteWebDriver(
-        executor,
-        new ImmutableCapabilities(session.getCapabilities()));
-    CommandProcessor commandProcessor = new WebDriverCommandProcessor(baseUrl, driver);
-    PROCESSORS.put(sessionId, commandProcessor);
+
+    PROCESSORS.put(sessionId, new WebDriverCommandProcessor(baseUrl, session.getWrappedDriver()));
+
     sendResponse(resp, sessionId.toString());
   }
 

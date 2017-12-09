@@ -17,6 +17,7 @@
 
 from .firefox.webdriver import WebDriver as Firefox  # noqa
 from .firefox.firefox_profile import FirefoxProfile  # noqa
+from .firefox.options import Options as FirefoxOptions  # noqa
 from .chrome.webdriver import WebDriver as Chrome  # noqa
 from .chrome.options import Options as ChromeOptions  # noqa
 from .ie.webdriver import WebDriver as Ie  # noqa
@@ -26,10 +27,12 @@ from .safari.webdriver import WebDriver as Safari  # noqa
 from .blackberry.webdriver import WebDriver as BlackBerry  # noqa
 from .phantomjs.webdriver import WebDriver as PhantomJS  # noqa
 from .android.webdriver import WebDriver as Android  # noqa
+from .webkitgtk.webdriver import WebDriver as WebKitGTK # noqa
+from .webkitgtk.options import Options as WebKitGTKOptions # noqa
 from .remote.webdriver import WebDriver as Remote  # noqa
 from .common.desired_capabilities import DesiredCapabilities  # noqa
 from .common.action_chains import ActionChains  # noqa
 from .common.touch_actions import TouchActions  # noqa
 from .common.proxy import Proxy  # noqa
 
-__version__ = '3.5.0'
+__version__ = '3.8.0'

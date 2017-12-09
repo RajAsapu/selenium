@@ -23,17 +23,24 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.openqa.selenium.remote.ErrorCodes.SUCCESS;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.gson.GsonBuilder;
 
 import org.openqa.selenium.internal.BuildInfo;
+import org.openqa.selenium.json.Json;
 import org.openqa.selenium.remote.http.HttpRequest;
 import org.openqa.selenium.remote.http.HttpResponse;
 import org.openqa.selenium.remote.server.CommandHandler;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 
 public class Status implements CommandHandler {
+
+  private final Json json;
+
+  Status(Json json) {
+    this.json = Objects.requireNonNull(json);
+  }
 
   @Override
   public void execute(HttpRequest req, HttpResponse resp) throws IOException {
@@ -47,8 +54,8 @@ public class Status implements CommandHandler {
     BuildInfo buildInfo = new BuildInfo();
     value.put("build", ImmutableMap.of(
         // We need to fix the BuildInfo to properly fill out these values.
-//          "revision", buildInfo.getBuildRevision(),
-//          "time", buildInfo.getBuildTime(),
+          "revision", buildInfo.getBuildRevision(),
+          "time", buildInfo.getBuildTime(),
         "version", buildInfo.getReleaseLabel()));
 
     value.put("os", ImmutableMap.of(
@@ -63,10 +70,7 @@ public class Status implements CommandHandler {
         "value", value.build());
 
     // Write out a minimal W3C status response.
-    byte[] payload = new GsonBuilder()
-        .serializeNulls()
-        .create()
-        .toJson(payloadObj).getBytes(UTF_8);
+    byte[] payload = json.toJson(payloadObj).getBytes(UTF_8);
 
     resp.setStatus(HTTP_OK);
     resp.setHeader("Content-Type", JSON_UTF_8.toString());

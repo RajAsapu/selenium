@@ -39,7 +39,7 @@ class SwitchTo:
             element = driver.switch_to.active_element
         """
         if self._driver.w3c:
-            return self._driver.execute(Command.W3C_GET_ACTIVE_ELEMENT)
+            return self._driver.execute(Command.W3C_GET_ACTIVE_ELEMENT)['value']
         else:
             return self._driver.execute(Command.GET_ACTIVE_ELEMENT)['value']
 
@@ -51,7 +51,9 @@ class SwitchTo:
         :Usage:
             alert = driver.switch_to.alert
         """
-        return Alert(self._driver)
+        alert = Alert(self._driver)
+        alert.text
+        return alert
 
     def default_content(self):
         """

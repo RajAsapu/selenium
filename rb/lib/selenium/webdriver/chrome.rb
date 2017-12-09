@@ -1,5 +1,3 @@
-# encoding: utf-8
-#
 # Licensed to the Software Freedom Conservancy (SFC) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -19,6 +17,7 @@
 
 require 'net/http'
 
+require 'selenium/webdriver/chrome/bridge'
 require 'selenium/webdriver/chrome/service'
 require 'selenium/webdriver/chrome/driver'
 require 'selenium/webdriver/chrome/profile'

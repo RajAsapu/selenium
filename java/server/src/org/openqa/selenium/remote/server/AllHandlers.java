@@ -23,16 +23,18 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
+import org.openqa.selenium.json.Json;
 import org.openqa.selenium.remote.SessionId;
 import org.openqa.selenium.remote.http.HttpMethod;
+import org.openqa.selenium.remote.server.commandhandler.BeginSession;
+import org.openqa.selenium.remote.server.commandhandler.GetAllSessions;
 import org.openqa.selenium.remote.server.commandhandler.GetLogTypes;
 import org.openqa.selenium.remote.server.commandhandler.GetLogsOfType;
 import org.openqa.selenium.remote.server.commandhandler.NoHandler;
 import org.openqa.selenium.remote.server.commandhandler.NoSessionHandler;
 import org.openqa.selenium.remote.server.commandhandler.Status;
+import org.openqa.selenium.remote.server.commandhandler.UploadFile;
 
 import java.lang.reflect.Constructor;
 import java.util.List;
@@ -49,23 +51,29 @@ import javax.servlet.http.HttpServletRequest;
 
 class AllHandlers {
 
-  private final static Gson GSON = new GsonBuilder().setLenient().serializeNulls().create();
+  private final Json json;
+  private final NewSessionPipeline pipeline;
   private final ActiveSessions allSessions;
 
   private final Map<HttpMethod, ImmutableList<Function<String, CommandHandler>>> additionalHandlers;
 
-  public AllHandlers(ActiveSessions allSessions) {
-    this.allSessions = allSessions;
+  public AllHandlers(NewSessionPipeline pipeline, ActiveSessions allSessions) {
+    this.pipeline = pipeline;
+    this.allSessions = Objects.requireNonNull(allSessions);
+    this.json = new Json();
 
     additionalHandlers = ImmutableMap.of(
         HttpMethod.DELETE, ImmutableList.of(),
         HttpMethod.GET, ImmutableList.of(
             handler("/session/{sessionId}/log/types", GetLogTypes.class),
+            handler("/sessions", GetAllSessions.class),
             handler("/status", Status.class)
         ),
         HttpMethod.POST, ImmutableList.of(
             handler("/session", BeginSession.class),
-            handler("/session/{sessionId}/log", GetLogsOfType.class)
+            handler("/session/{sessionId}/file", UploadFile.class),
+            handler("/session/{sessionId}/log", GetLogsOfType.class),
+            handler("/session/{sessionId}/se/file", UploadFile.class)
         ));
   }
 
@@ -94,12 +102,12 @@ class AllHandlers {
     if (id != null) {
       ActiveSession session = allSessions.get(id);
       if (session == null) {
-        return new NoSessionHandler(id);
+        return new NoSessionHandler(json, id);
       }
       return session;
     }
 
-    return new NoHandler();
+    return new NoHandler(json);
   }
 
   private <H extends CommandHandler> Function<String, CommandHandler> handler(
@@ -113,14 +121,16 @@ class AllHandlers {
       }
 
       ImmutableSet.Builder<Object> args = ImmutableSet.builder();
+      args.add(pipeline);
       args.add(allSessions);
-      args.add(GSON);
+      args.add(json);
       if (match.getParameters().containsKey("sessionId")) {
         SessionId id = new SessionId(match.getParameters().get("sessionId"));
         args.add(id);
         ActiveSession session = allSessions.get(id);
         if (session != null) {
           args.add(session);
+          args.add(session.getFileSystem());
         }
       }
       match.getParameters().entrySet().stream()

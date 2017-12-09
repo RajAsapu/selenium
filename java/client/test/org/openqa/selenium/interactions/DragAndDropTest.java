@@ -28,7 +28,6 @@ import static org.openqa.selenium.testing.Driver.FIREFOX;
 import static org.openqa.selenium.testing.Driver.HTMLUNIT;
 import static org.openqa.selenium.testing.Driver.IE;
 import static org.openqa.selenium.testing.Driver.MARIONETTE;
-import static org.openqa.selenium.testing.Driver.PHANTOMJS;
 import static org.openqa.selenium.testing.Driver.SAFARI;
 
 import org.junit.Test;
@@ -53,7 +52,6 @@ import java.util.regex.Pattern;
 public class DragAndDropTest extends JUnit4TestBase {
 
   @Test
-  @Ignore(MARIONETTE)
   public void testDragAndDropRelative() {
     assumeFalse("See issue 2281", TestUtilities.getEffectivePlatform().is(Platform.MAC));
     assumeFalse(Browser.detect() == Browser.opera &&
@@ -73,7 +71,6 @@ public class DragAndDropTest extends JUnit4TestBase {
   }
 
   @Test
-  @Ignore(MARIONETTE)
   public void testDragAndDropToElement() {
     driver.get(pages.dragAndDropPage);
     WebElement img1 = driver.findElement(By.id("test1"));
@@ -141,7 +138,6 @@ public class DragAndDropTest extends JUnit4TestBase {
   @Test
   @Ignore(CHROME)
   @Ignore(IE)
-  @Ignore(PHANTOMJS)
   @Ignore(FIREFOX)
   public void testDragTooFar() {
     driver.get(pages.dragAndDropPage);
@@ -222,7 +218,6 @@ public class DragAndDropTest extends JUnit4TestBase {
 
   @Test
   @Ignore(value = IE, reason = "IE fails this test if requireWindowFocus=true")
-  @Ignore(PHANTOMJS)
   @Ignore(SAFARI)
   @Ignore(MARIONETTE)
   public void canDragAnElementNotVisibleInTheCurrentViewportDueToAParentOverflow() {

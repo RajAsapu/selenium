@@ -17,32 +17,45 @@
 
 package org.openqa.selenium.remote.server;
 
+import static org.openqa.selenium.remote.server.WebDriverServlet.NEW_SESSION_PIPELINE_KEY;
+
 import com.beust.jcommander.JCommander;
 
+import org.openqa.grid.internal.utils.configuration.GridNodeConfiguration;
 import org.openqa.grid.internal.utils.configuration.StandaloneConfiguration;
+import org.openqa.grid.selenium.node.ChromeMutator;
+import org.openqa.grid.selenium.node.FirefoxMutator;
 import org.openqa.grid.shared.GridNodeServer;
 import org.openqa.grid.web.servlet.DisplayHelpServlet;
 import org.openqa.grid.web.servlet.beta.ConsoleServlet;
+import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.Platform;
 import org.openqa.selenium.remote.SessionId;
 import org.openqa.selenium.remote.server.handler.DeleteSession;
+import org.openqa.selenium.remote.server.jmx.JMXHelper;
+import org.openqa.selenium.remote.server.jmx.ManagedService;
+import org.seleniumhq.jetty9.security.ConstraintMapping;
+import org.seleniumhq.jetty9.security.ConstraintSecurityHandler;
 import org.seleniumhq.jetty9.server.Connector;
 import org.seleniumhq.jetty9.server.HttpConfiguration;
 import org.seleniumhq.jetty9.server.HttpConnectionFactory;
 import org.seleniumhq.jetty9.server.Server;
 import org.seleniumhq.jetty9.server.ServerConnector;
 import org.seleniumhq.jetty9.servlet.ServletContextHandler;
+import org.seleniumhq.jetty9.util.security.Constraint;
 import org.seleniumhq.jetty9.util.thread.QueuedThreadPool;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javax.servlet.Servlet;
 
 /**
  * Provides a server that can launch and manage selenium sessions.
  */
+@ManagedService(objectName = "org.seleniumhq.server:type=SeleniumServer")
 public class SeleniumServer implements GridNodeServer {
 
   private final static Logger LOG = Logger.getLogger(SeleniumServer.class.getName());
@@ -65,6 +78,8 @@ public class SeleniumServer implements GridNodeServer {
 
   public SeleniumServer(StandaloneConfiguration configuration) {
     this.configuration = configuration;
+
+    new JMXHelper().register(this);
   }
 
   public int getRealPort() {
@@ -113,7 +128,7 @@ public class SeleniumServer implements GridNodeServer {
       server = new Server();
     }
 
-    ServletContextHandler handler = new ServletContextHandler();
+    ServletContextHandler handler = new ServletContextHandler(ServletContextHandler.SECURITY);
 
     if (configuration.browserTimeout != null && configuration.browserTimeout >= 0) {
       handler.setInitParameter(DriverServlet.BROWSER_TIMEOUT_PARAMETER,
@@ -131,6 +146,10 @@ public class SeleniumServer implements GridNodeServer {
         new DefaultDriverFactory(Platform.getCurrent()),
         TimeUnit.SECONDS.toMillis(inactiveSessionTimeoutSeconds));
     handler.setAttribute(DriverServlet.SESSIONS_KEY, driverSessions);
+
+    NewSessionPipeline pipeline = createPipeline(configuration);
+    handler.setAttribute(NEW_SESSION_PIPELINE_KEY, pipeline);
+
     handler.setContextPath("/");
     if (configuration.enablePassThrough) {
       LOG.info("Using the passthrough mode handler");
@@ -146,6 +165,18 @@ public class SeleniumServer implements GridNodeServer {
 
     addRcSupport(handler);
     addExtraServlets(handler);
+
+    Constraint constraint = new Constraint();
+    constraint.setName("Disable TRACE");
+    constraint.setAuthenticate(true);
+
+    ConstraintMapping mapping = new ConstraintMapping();
+    mapping.setConstraint(constraint);
+    mapping.setMethod("TRACE");
+    mapping.setPathSpec("/");
+
+    ConstraintSecurityHandler securityHandler = (ConstraintSecurityHandler) handler.getSecurityHandler();
+    securityHandler.addConstraintMapping(mapping);
 
     server.setHandler(handler);
 
@@ -168,16 +199,23 @@ public class SeleniumServer implements GridNodeServer {
     }
   }
 
-  private class ShutDownHook implements Runnable {
-    private final SeleniumServer selenium;
+  private NewSessionPipeline createPipeline(StandaloneConfiguration configuration) {
+    NewSessionPipeline.Builder builder = DefaultPipeline.createPipelineWithDefaultFallbacks();
 
-    ShutDownHook(SeleniumServer selenium) {
-      this.selenium = selenium;
+    if (configuration instanceof GridNodeConfiguration) {
+      ((GridNodeConfiguration) configuration).capabilities.forEach(
+          caps -> {
+            builder.addCapabilitiesMutator(new ChromeMutator(caps));
+            builder.addCapabilitiesMutator(new FirefoxMutator(caps));
+            builder.addCapabilitiesMutator(c -> new ImmutableCapabilities(c.asMap().entrySet().stream()
+                .filter(e -> ! e.getKey().startsWith("se:"))
+                .filter(e -> e.getValue() != null)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))));
+          }
+      );
     }
 
-    public void run() {
-      selenium.stop();
-    }
+    return builder.create();
   }
 
   /**

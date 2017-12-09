@@ -71,10 +71,10 @@ LRESULT IECommandExecutor::OnCreate(UINT uMsg,
   this->PopulateElementFinderMethods();
   this->current_browser_id_ = "";
   this->serialized_response_ = "";
-  this->unexpected_alert_behavior_ = IGNORE_UNEXPECTED_ALERTS;
+  this->unexpected_alert_behavior_ = "";
   this->implicit_wait_timeout_ = 0;
-  this->async_script_timeout_ = -1;
-  this->page_load_timeout_ = -1;
+  this->async_script_timeout_ = 30000;
+  this->page_load_timeout_ = 300000;
   this->is_waiting_ = false;
   this->page_load_strategy_ = "normal";
   this->file_upload_dialog_timeout_ = DEFAULT_FILE_UPLOAD_DIALOG_TIMEOUT_IN_MILLISECONDS;
@@ -474,14 +474,23 @@ void IECommandExecutor::DispatchCommand() {
               command_type == webdriver::CommandType::SendKeysToAlert ||
               command_type == webdriver::CommandType::AcceptAlert ||
               command_type == webdriver::CommandType::DismissAlert ||
-              command_type == webdriver::CommandType::SetAlertCredentials) {
+              command_type == webdriver::CommandType::SetAlertCredentials ||
+              command_type == webdriver::CommandType::GetCurrentWindowHandle ||
+              command_type == webdriver::CommandType::GetWindowHandles ||
+              command_type == webdriver::CommandType::SwitchToWindow) {
             LOG(DEBUG) << "Alert is detected, and the sent command is valid";
           } else {
             LOG(DEBUG) << "Unexpected alert is detected, and the sent command is invalid when an alert is present";
+            bool is_notify_unexpected_alert =
+                this->unexpected_alert_behavior_.size() == 0 ||
+                this->unexpected_alert_behavior_ == IGNORE_UNEXPECTED_ALERTS ||
+                this->unexpected_alert_behavior_ == DISMISS_AND_NOTIFY_UNEXPECTED_ALERTS ||
+                this->unexpected_alert_behavior_ == ACCEPT_AND_NOTIFY_UNEXPECTED_ALERTS;
+            bool is_quit_command = command_type == webdriver::CommandType::Quit;
             std::string alert_text = this->HandleUnexpectedAlert(browser,
                                                                  alert_handle,
-                                                                 command_type == webdriver::CommandType::Quit);
-            if (command_type != webdriver::CommandType::Quit) {
+                                                                 is_quit_command);
+            if (!is_quit_command && is_notify_unexpected_alert) {
               // To keep pace with what Firefox does, we'll return the text of the
               // alert in the error response.
               response.SetErrorResponse(EUNEXPECTEDALERTOPEN, "Modal dialog present");
@@ -505,7 +514,7 @@ void IECommandExecutor::DispatchCommand() {
       this->is_waiting_ = browser->wait_required();
       if (this->is_waiting_) {
         if (this->page_load_timeout_ >= 0) {
-          this->wait_timeout_ = clock() + (this->page_load_timeout_ / 1000 * CLOCKS_PER_SEC);
+          this->wait_timeout_ = clock() + (static_cast<int>(this->page_load_timeout_) / 1000 * CLOCKS_PER_SEC);
         }
         ::PostMessage(this->m_hWnd, WD_WAIT, NULL, NULL);
       }
@@ -545,10 +554,14 @@ std::string IECommandExecutor::HandleUnexpectedAlert(BrowserHandle browser,
   LOG(TRACE) << "Entering IECommandExecutor::HandleUnexpectedAlert";
   Alert dialog(browser, alert_handle);
   std::string alert_text = dialog.GetText();
-  if (this->unexpected_alert_behavior_ == ACCEPT_UNEXPECTED_ALERTS) {
+  if (this->unexpected_alert_behavior_ == ACCEPT_UNEXPECTED_ALERTS ||
+      this->unexpected_alert_behavior_ == ACCEPT_AND_NOTIFY_UNEXPECTED_ALERTS) {
     LOG(DEBUG) << "Automatically accepting the alert";
     dialog.Accept();
-  } else if (this->unexpected_alert_behavior_ == DISMISS_UNEXPECTED_ALERTS || force_use_dismiss) {
+  } else if (this->unexpected_alert_behavior_.size() == 0 ||
+             this->unexpected_alert_behavior_ == DISMISS_UNEXPECTED_ALERTS ||
+             this->unexpected_alert_behavior_ == DISMISS_AND_NOTIFY_UNEXPECTED_ALERTS ||
+             force_use_dismiss) {
     // If a quit command was issued, we should not ignore an unhandled
     // alert, even if the alert behavior is set to "ignore".
     LOG(DEBUG) << "Automatically dismissing the alert";

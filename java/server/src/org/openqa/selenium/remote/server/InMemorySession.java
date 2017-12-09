@@ -18,18 +18,13 @@
 package org.openqa.selenium.remote.server;
 
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 import com.google.common.base.Preconditions;
+import com.google.common.base.StandardSystemProperty;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
 
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.HasCapabilities;
-import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.io.TemporaryFilesystem;
 import org.openqa.selenium.remote.Dialect;
@@ -37,16 +32,10 @@ import org.openqa.selenium.remote.SessionId;
 import org.openqa.selenium.remote.http.HttpRequest;
 import org.openqa.selenium.remote.http.HttpResponse;
 
-import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.UncheckedIOException;
-import java.lang.reflect.Type;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -60,6 +49,7 @@ class InMemorySession implements ActiveSession {
   private final Map<String, Object> capabilities;
   private final SessionId id;
   private final Dialect downstream;
+  private final TemporaryFilesystem filesystem;
   private final JsonHttpCommandHandler handler;
 
   private InMemorySession(WebDriver driver, Capabilities capabilities, Dialect downstream)
@@ -79,6 +69,10 @@ class InMemorySession implements ActiveSession {
 
     this.id = new SessionId(UUID.randomUUID().toString());
     this.downstream = Preconditions.checkNotNull(downstream);
+
+    File tempRoot = new File(StandardSystemProperty.JAVA_IO_TMPDIR.value(), id.toString());
+    Preconditions.checkState(tempRoot.mkdirs());
+    this.filesystem = TemporaryFilesystem.getTmpFsBasedOn(tempRoot);
 
     this.handler = new JsonHttpCommandHandler(
         new PretendDriverSessions(),
@@ -111,38 +105,32 @@ class InMemorySession implements ActiveSession {
   }
 
   @Override
+  public TemporaryFilesystem getFileSystem() {
+    return filesystem;
+  }
+
+  @Override
+  public WebDriver getWrappedDriver() {
+    return driver;
+  }
+
+  @Override
   public void stop() {
     driver.quit();
   }
 
   public static class Factory implements SessionFactory {
 
-    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>(){}.getType();
-    private final Gson gson;
     private final DriverProvider provider;
 
     public Factory(DriverProvider provider) {
       this.provider = provider;
-      gson = new GsonBuilder().setLenient().create();
     }
 
     @Override
-    public ActiveSession apply(NewSessionPayload payload) {
+    public Optional<ActiveSession> apply(Set<Dialect> downstreamDialects, Capabilities caps) {
       // Assume the blob fits in the available memory.
-      try (
-          InputStream is = payload.getPayload().get();
-          Reader ir = new InputStreamReader(is, UTF_8);
-          Reader reader = new BufferedReader(ir)) {
-        Map<String, Object> raw = gson.fromJson(reader, MAP_TYPE);
-        Object desired = raw.get("desiredCapabilities");
-
-        if (!(desired instanceof Map)) {
-          return null;
-        }
-
-        @SuppressWarnings("unchecked") ImmutableCapabilities caps =
-            new ImmutableCapabilities((Map<String, ?>) desired);
-
+      try {
         if (!provider.canCreateDriverInstanceFor(caps)) {
           return null;
         }
@@ -150,12 +138,12 @@ class InMemorySession implements ActiveSession {
         WebDriver driver = provider.newInstance(caps);
 
         // Prefer the OSS dialect.
-        Dialect downstream = payload.getDownstreamDialects().contains(Dialect.OSS) ?
+        Dialect downstream = downstreamDialects.contains(Dialect.OSS) ?
                              Dialect.OSS :
-                             payload.getDownstreamDialects().iterator().next();
-        return new InMemorySession(driver, caps, downstream);
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
+                             downstreamDialects.iterator().next();
+        return Optional.of(new InMemorySession(driver, caps, downstream));
+      } catch (IOException | IllegalStateException e) {
+        return Optional.empty();
       }
     }
 
@@ -190,8 +178,9 @@ class InMemorySession implements ActiveSession {
     }
 
     @Override
-    public void registerDriver(Capabilities capabilities,
-                               Class<? extends WebDriver> implementation) {
+    public void registerDriver(
+        Capabilities capabilities,
+        Class<? extends WebDriver> implementation) {
       throw new UnsupportedOperationException("registerDriver");
     }
 
@@ -203,20 +192,16 @@ class InMemorySession implements ActiveSession {
 
   private class ActualSession implements Session {
 
-    private final TemporaryFilesystem tempFs;
     private final KnownElements knownElements;
+    private volatile String screenshot;
 
     private ActualSession() throws IOException {
-      Path tempDirectory = Files.createTempDirectory("session");
-      tempFs = TemporaryFilesystem.getTmpFsBasedOn(tempDirectory.toFile());
       knownElements = new KnownElements();
     }
 
     @Override
     public void close() {
       driver.quit();
-
-      tempFs.deleteBaseDir();
     }
 
     @Override
@@ -230,18 +215,20 @@ class InMemorySession implements ActiveSession {
     }
 
     @Override
-    public Capabilities getCapabilities() {
-      return new ImmutableCapabilities(capabilities);
+    public Map<String, Object> getCapabilities() {
+      return capabilities;
     }
 
     @Override
     public void attachScreenshot(String base64EncodedImage) {
-      // no-op
+      screenshot = base64EncodedImage;
     }
 
     @Override
     public String getAndClearScreenshot() {
-      return null;
+      String toReturn = screenshot;
+      screenshot = null;
+      return toReturn;
     }
 
     @Override
@@ -251,7 +238,7 @@ class InMemorySession implements ActiveSession {
 
     @Override
     public TemporaryFilesystem getTemporaryFileSystem() {
-      return tempFs;
+      return getFileSystem();
     }
   }
 }

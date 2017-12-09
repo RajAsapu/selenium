@@ -29,6 +29,12 @@ class SetWindowRectCommandHandler : public IECommandHandler {
   void ExecuteInternal(const IECommandExecutor& executor,
                        const ParametersMap& command_parameters,
                        Response* response);
+
+ private:
+  bool GetNumericParameter(const ParametersMap& command_parameters,
+                           const std::string& argument_name,
+                           int* argument_value,
+                           std::string* error_message);
 };
 
 } // namespace webdriver

@@ -18,6 +18,9 @@
 """
 The ActionChains implementation,
 """
+
+import time
+
 from selenium.webdriver.remote.command import Command
 
 from .utils import keys_to_typing
@@ -311,6 +314,15 @@ class ActionChains(object):
                     'yoffset': int(yoffset)}))
         return self
 
+    def pause(self, seconds):
+        """ Pause all inputs for the specified duration in seconds """
+        if self._driver.w3c:
+            self.w3c_actions.pointer_action.pause(seconds)
+            self.w3c_actions.key_action.pause(seconds)
+        else:
+            self._actions.append(lambda: time.sleep(seconds))
+        return self
+
     def release(self, on_element=None):
         """
         Releasing a held mouse button on an element.
@@ -319,12 +331,12 @@ class ActionChains(object):
          - on_element: The element to mouse up.
            If None, releases on current mouse position.
         """
+        if on_element:
+                self.move_to_element(on_element)
         if self._driver.w3c:
             self.w3c_actions.pointer_action.release()
             self.w3c_actions.key_action.pause()
         else:
-            if on_element:
-                self.move_to_element(on_element)
             self._actions.append(lambda: self._driver.execute(Command.MOUSE_UP, {}))
         return self
 

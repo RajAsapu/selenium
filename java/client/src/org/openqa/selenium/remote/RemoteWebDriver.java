@@ -18,6 +18,8 @@
 package org.openqa.selenium.remote;
 
 import static org.openqa.selenium.remote.CapabilityType.LOGGING_PREFS;
+import static org.openqa.selenium.remote.CapabilityType.PLATFORM;
+import static org.openqa.selenium.remote.CapabilityType.PLATFORM_NAME;
 import static org.openqa.selenium.remote.CapabilityType.SUPPORTS_JAVASCRIPT;
 
 import com.google.common.collect.ImmutableMap;
@@ -33,7 +35,9 @@ import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.Cookie;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.HasCapabilities;
+import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.NoSuchFrameException;
 import org.openqa.selenium.NoSuchWindowException;
 import org.openqa.selenium.OutputType;
@@ -56,6 +60,7 @@ import org.openqa.selenium.internal.FindsByLinkText;
 import org.openqa.selenium.internal.FindsByName;
 import org.openqa.selenium.internal.FindsByTagName;
 import org.openqa.selenium.internal.FindsByXPath;
+import org.openqa.selenium.json.Json;
 import org.openqa.selenium.logging.LocalLogs;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingHandler;
@@ -64,16 +69,16 @@ import org.openqa.selenium.logging.Logs;
 import org.openqa.selenium.logging.NeedsLocalLogs;
 import org.openqa.selenium.remote.internal.JsonToWebElementConverter;
 import org.openqa.selenium.remote.internal.WebElementToJsonConverter;
-import org.openqa.selenium.security.Credentials;
-import org.openqa.selenium.security.UserAndPassword;
 
 import java.net.URL;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -105,27 +110,27 @@ public class RemoteWebDriver implements WebDriver, JavascriptExecutor,
 
   // For cglib
   protected RemoteWebDriver() {
-    init(new DesiredCapabilities());
+    init(new ImmutableCapabilities());
   }
 
-  public RemoteWebDriver(Capabilities desiredCapabilities) {
-    this(new HttpCommandExecutor(null), desiredCapabilities);
+  public RemoteWebDriver(Capabilities capabilities) {
+    this(new HttpCommandExecutor(null), capabilities);
   }
 
-  public RemoteWebDriver(CommandExecutor executor, Capabilities desiredCapabilities) {
+  public RemoteWebDriver(CommandExecutor executor, Capabilities capabilities) {
     this.executor = executor;
 
-    init(desiredCapabilities);
+    init(capabilities);
 
     if (executor instanceof NeedsLocalLogs) {
       ((NeedsLocalLogs)executor).setLocalLogs(localLogs);
     }
 
     try {
-      startClient(desiredCapabilities);
+      startClient(capabilities);
     } catch (RuntimeException e) {
       try {
-        stopClient(desiredCapabilities);
+        stopClient(capabilities);
       } catch (Exception ignored) {
         // Ignore the clean-up exception. We'll propagate the original failure.
       }
@@ -134,7 +139,7 @@ public class RemoteWebDriver implements WebDriver, JavascriptExecutor,
     }
 
     try {
-      startSession(desiredCapabilities);
+      startSession(capabilities);
     } catch (RuntimeException e) {
       try {
         quit();
@@ -146,36 +151,12 @@ public class RemoteWebDriver implements WebDriver, JavascriptExecutor,
     }
   }
 
-  /**
-   * @deprecated Use {@link RemoteWebDriver(CommandExecutor, Capabilities)}.
-   */
-  @Deprecated
-  public RemoteWebDriver(
-      CommandExecutor executor,
-      Capabilities desiredCapabilities,
-      Capabilities requiredCapabilities) {
-    this(executor, desiredCapabilities.merge(requiredCapabilities));
-  }
-
-  /**
-   * @deprecated Use {@link RemoteWebDriver(CommandExecutor, Capabilities)}, creating a new
-   *   {@link HttpCommandExecutor}.
-   */
-  @Deprecated
-  public RemoteWebDriver(
-      URL remoteAddress,
-      Capabilities desiredCapabilities,
-      Capabilities requiredCapabilities) {
-    this(new HttpCommandExecutor(remoteAddress), desiredCapabilities,
-        requiredCapabilities);
-  }
-
-  public RemoteWebDriver(URL remoteAddress, Capabilities desiredCapabilities) {
-    this(new HttpCommandExecutor(remoteAddress), desiredCapabilities);
+  public RemoteWebDriver(URL remoteAddress, Capabilities capabilities) {
+    this(new HttpCommandExecutor(remoteAddress), capabilities);
   }
 
   private void init(Capabilities capabilities) {
-    capabilities = capabilities == null ? new DesiredCapabilities() : capabilities;
+    capabilities = capabilities == null ? new ImmutableCapabilities() : capabilities;
 
     logger.addHandler(LoggingHandler.getInstance());
 
@@ -232,50 +213,36 @@ public class RemoteWebDriver implements WebDriver, JavascriptExecutor,
     sessionId = new SessionId(opaqueKey);
   }
 
-  protected void startSession(Capabilities desiredCapabilities) {
-    startSession(desiredCapabilities, null);
-  }
-
-  /**
-   * @deprecated Use {@link #startSession(Capabilities)} instead.
-   */
-  @Deprecated
-  @SuppressWarnings({"unchecked"})
-  protected void startSession(Capabilities desiredCapabilities,
-      Capabilities requiredCapabilities) {
-    ImmutableMap.Builder<String, Capabilities> paramBuilder =
-        new ImmutableMap.Builder<>();
-    paramBuilder.put("desiredCapabilities", desiredCapabilities);
-    if (requiredCapabilities != null) {
-      paramBuilder.put("requiredCapabilities", requiredCapabilities);
-    }
-    Map<String, ?> parameters = paramBuilder.build();
+  protected void startSession(Capabilities capabilities) {
+    Map<String, ?> parameters = ImmutableMap.of("desiredCapabilities", capabilities);
 
     Response response = execute(DriverCommand.NEW_SESSION, parameters);
 
     Map<String, Object> rawCapabilities = (Map<String, Object>) response.getValue();
-    DesiredCapabilities returnedCapabilities = new DesiredCapabilities();
+    MutableCapabilities returnedCapabilities = new MutableCapabilities();
     for (Map.Entry<String, Object> entry : rawCapabilities.entrySet()) {
       // Handle the platform later
-      if (CapabilityType.PLATFORM.equals(entry.getKey())) {
+      if (PLATFORM.equals(entry.getKey()) || PLATFORM_NAME.equals(entry.getKey())) {
         continue;
       }
       returnedCapabilities.setCapability(entry.getKey(), entry.getValue());
     }
-    String platformString = (String) rawCapabilities.get(CapabilityType.PLATFORM);
+    String platformString = (String) rawCapabilities.getOrDefault(PLATFORM,
+                                                                  rawCapabilities.get(PLATFORM_NAME));
     Platform platform;
     try {
       if (platformString == null || "".equals(platformString)) {
         platform = Platform.ANY;
       } else {
-        platform = Platform.valueOf(platformString);
+        platform = Platform.fromString(platformString);
       }
-    } catch (IllegalArgumentException e) {
+    } catch (WebDriverException e) {
       // The server probably responded with a name matching the os.name
       // system property. Try to recover and parse this.
       platform = Platform.extractFromSysProperty(platformString);
     }
-    returnedCapabilities.setPlatform(platform);
+    returnedCapabilities.setCapability(PLATFORM, platform);
+    returnedCapabilities.setCapability(PLATFORM_NAME, platform);
 
     if (rawCapabilities.containsKey(SUPPORTS_JAVASCRIPT)) {
       Object raw = rawCapabilities.get(SUPPORTS_JAVASCRIPT);
@@ -288,60 +255,50 @@ public class RemoteWebDriver implements WebDriver, JavascriptExecutor,
       returnedCapabilities.setCapability(SUPPORTS_JAVASCRIPT, true);
     }
 
-    capabilities = returnedCapabilities;
+    this.capabilities = returnedCapabilities;
     sessionId = new SessionId(response.getSessionId());
   }
 
   /**
    * Method called before {@link #startSession(Capabilities) starting a new session}. The default
    * implementation is a no-op, but subtypes should override this method to define custom behavior.
+   *
+   * @deprecated No longer used, as behaviour is now in {@link CommandExecutor} instances.
    */
+  @Deprecated
   protected void startClient() {
   }
 
   /**
    * Method called before {@link #startSession(Capabilities) starting a new session}. The default
    * implementation is a no-op, but subtypes should override this method to define custom behavior.
-   */
-  protected void startClient(Capabilities desiredCapabilities) {
-    startClient();
-  }
-
-  /**
-   * Method called before {@link #startSession(Capabilities) starting a new session}. The default
-   * implementation is a no-op, but subtypes should override this method to define custom behavior.
    *
-   * @deprecated Use {@link #startClient(Capabilities)}
+   * @deprecated No longer used, as behaviour is now in {@link CommandExecutor} instances.
    */
   @Deprecated
-  protected void startClient(Capabilities desiredCapabilities, Capabilities requiredCapabilities) {
-    startClient(desiredCapabilities.merge(requiredCapabilities));
+  protected void startClient(Capabilities capabilities) {
+    startClient();
   }
 
   /**
    * Method called after executing a {@link #quit()} command. The default implementation is a no-op,
    * but subtypes should override this method to define custom behavior.
+   *
+   * @deprecated No longer used, as behaviour is now in {@link CommandExecutor} instances.
    */
+  @Deprecated
   protected void stopClient() {
   }
 
   /**
    * Method called after executing a {@link #quit()} command. The default implementation is a no-op,
    * but subtypes should override this method to define custom behavior.
-   */
-  protected void stopClient(Capabilities desiredCapbilities) {
-    stopClient();
-  }
-
-  /**
-   * Method called after executing a {@link #quit()} command. The default implementation is a no-op,
-   * but subtypes should override this method to define custom behavior.
    *
-   * @deprecated Use {@link #stopClient(Capabilities)}
+   * @deprecated No longer used, as behaviour is now in {@link CommandExecutor} instances.
    */
   @Deprecated
-  protected void stopClient(Capabilities desiredCapabilities, Capabilities requiredCapabilities) {
-    stopClient(desiredCapabilities.merge(requiredCapabilities));
+  protected void stopClient(Capabilities capabilities) {
+    stopClient();
   }
 
   public ErrorHandler getErrorHandler() {
@@ -441,6 +398,9 @@ public class RemoteWebDriver implements WebDriver, JavascriptExecutor,
     Response response = execute(DriverCommand.FIND_ELEMENTS,
         ImmutableMap.of("using", by, "value", using));
     Object value = response.getValue();
+    if (value == null) { // see https://github.com/SeleniumHQ/selenium/issues/4555
+      return Collections.emptyList();
+    }
     List<WebElement> allElements;
     try {
       allElements = (List<WebElement>) value;
@@ -612,7 +572,7 @@ public class RemoteWebDriver implements WebDriver, JavascriptExecutor,
   }
 
   protected void setElementConverter(JsonToWebElementConverter converter) {
-    this.converter = converter;
+    this.converter = Objects.requireNonNull(converter, "Element converter must not be null");
   }
 
   protected JsonToWebElementConverter getElementConverter() {
@@ -647,7 +607,7 @@ public class RemoteWebDriver implements WebDriver, JavascriptExecutor,
 
       // Unwrap the response value by converting any JSON objects of the form
       // {"ELEMENT": id} to RemoteWebElements.
-      Object value = converter.apply(response.getValue());
+      Object value = getElementConverter().apply(response.getValue());
       response.setValue(value);
     } catch (WebDriverException e) {
       throw e;
@@ -729,7 +689,10 @@ public class RemoteWebDriver implements WebDriver, JavascriptExecutor,
    * @param when        verb tense of "Execute" to prefix message
    */
   protected void log(SessionId sessionId, String commandName, Object toLog, When when) {
-    String text = "" + toLog;
+    if (!logger.isLoggable(level)) {
+      return;
+    }
+    String text = String.valueOf(toLog);
     if (commandName.equals(DriverCommand.EXECUTE_SCRIPT)
         || commandName.equals(DriverCommand.EXECUTE_ASYNC_SCRIPT)) {
       if (text.length() > 100 && Boolean.getBoolean("webdriver.remote.shorten_log_messages")) {
@@ -787,7 +750,7 @@ public class RemoteWebDriver implements WebDriver, JavascriptExecutor,
       Set<Cookie> toReturn = new HashSet<>();
 
       List<Map<String, Object>> cookies =
-          new JsonToBeanConverter().convert(List.class, returned);
+          new Json().toType(returned, List.class);
       if (cookies == null) {
         return toReturn;
       }
@@ -1043,36 +1006,16 @@ public class RemoteWebDriver implements WebDriver, JavascriptExecutor,
       return (String) execute(DriverCommand.GET_ALERT_TEXT).getValue();
     }
 
-    public void sendKeys(String keysToSend) {
-      execute(DriverCommand.SET_ALERT_VALUE, ImmutableMap.of("text", keysToSend));
-    }
-
-    @Beta
-    public void setCredentials(Credentials credentials) {
-      if (!(credentials instanceof UserAndPassword)) {
-        throw new RuntimeException("Unsupported credentials: " + credentials);
-      }
-
-      UserAndPassword userAndPassword = (UserAndPassword) credentials;
-      execute(
-        DriverCommand.SET_ALERT_CREDENTIALS,
-        ImmutableMap.of(
-          "username", userAndPassword.getUsername(),
-          "password", userAndPassword.getPassword()));
-    }
-
     /**
-     * Authenticate an HTTP Basic Auth dialog.
-     * Implicitly 'clicks ok'
+     * @param keysToSend character sequence to send to the alert
      *
-     * Usage: driver.switchTo().alert().authenticateUsing(new UsernamePasswordCredentials("cheese",
-     *        "secretGouda"));
-     * @param credentials credentials to pass to Auth prompt
+     * @throws IllegalArgumentException if keysToSend is null
      */
-    @Beta
-    public void authenticateUsing(Credentials credentials) {
-      this.setCredentials(credentials);
-      this.accept();
+    public void sendKeys(String keysToSend) {
+      if(keysToSend==null) {
+        throw new IllegalArgumentException("Keys to send should be a not null CharSequence");
+      }
+      execute(DriverCommand.SET_ALERT_VALUE, ImmutableMap.of("text", keysToSend));
     }
   }
 
@@ -1088,7 +1031,21 @@ public class RemoteWebDriver implements WebDriver, JavascriptExecutor,
     if (caps == null) {
       return super.toString();
     }
-    return String.format("%s: %s on %s (%s)", getClass().getSimpleName(),
-        caps.getBrowserName(), caps.getPlatform(), getSessionId());
+
+    // w3c name first
+    Object platform = caps.getCapability(PLATFORM_NAME);
+    if (!(platform instanceof String)) {
+      platform = caps.getCapability(PLATFORM);
+    }
+    if (platform == null) {
+      platform = "unknown";
+    }
+
+    return String.format(
+        "%s: %s on %s (%s)",
+        getClass().getSimpleName(),
+        caps.getBrowserName(),
+        platform,
+        getSessionId());
   }
 }

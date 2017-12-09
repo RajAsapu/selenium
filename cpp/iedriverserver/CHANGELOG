@@ -9,6 +9,91 @@ available via the project downloads page. Changes in "revision" field indicate
 private releases checked into the prebuilts directory of the source tree, but
 not made generally available on the downloads page.
 
+v3.7.0.1
+========
+ * Updated IE setAlertText command to check for invalid data.
+ * Updated getActiveElement command for IE driver to handle contentEditable
+   elements.
+ * Fixed IE driver setTimeouts command to properly validate JSON payload.
+ * Updated IE driver new session command handler to process null capability
+   values.
+ * Updated IE driver getActiveElement command to be spec-compliant. If there
+   is no active element, this method may now return a null results, as in
+   compliance with the W3C WebDriver specification, which relies on the DOM
+   definition of active element. Language bindings maintainers should
+   take note that this is a behavior change, and that the command can now
+   return null values. Adjust your language bindings accordingly.
+ * Made IE driver SetWindowRect command compliant with spec.
+ * Made commands return NoSuchElement error in IE with incorrect internal IDs.
+   The IE driver, to be spec compliant, must return "no such element" if an
+   invalid internal WebDriver ID is passed in the URL. Previously, the driver
+   would assume that the ID was one that was previously provided by the
+   driver, but now has gone stale. This may cause discomfort for some rare
+   use cases where the incorrect exception is being looked for.
+ * Updating IE driver element tag name command handler to be spec compliant
+
+v3.7.0.0
+========
+ * Release to synchronize with release of Selenium project.
+
+v3.6.0.1
+========
+ * Updated existing command to better follow the W3C WebDriver Specification.
+   In particular, aligned certain HTTP response codes to be returned from
+   the driver, added initial timeout values for timeouts, updated new session
+   payload processing, updated navigation to URL, and updated finding of
+   elements all to comply with spec behavior.
+ * Updated proxy processing to properly support `direct` value.
+   Fixes issue #4981.
+ * Updated action processing to correctly handle carriage return ('\r')
+   characters in sendKeys.
+
+v3.6.0.0
+========
+ * Release to synchronize with release of Selenium project.
+
+v3.5.1.1
+========
+ * Updated to better support W3C WebDriver Specification. This is a large
+   update that includes implementation of the following things that are part
+   of the WebDriver spec:
+   * Implement the "get element property" command
+   * Implement the "get named cookie" command
+   * Implement the "minimize window" command
+   * Implement the "fullscreen window" command
+   * Update "set window rect" command to correctly recognize and restore 
+     from minimized or full screen state
+   * Fix the "release actions" command to properly roll back all pending
+     actions
+   * Update the "perform actions" command to be more robust for pointer
+     actions
+   * Fix alert handling to handle dialogs with the "Do not show any more
+     dialogs" check box
+   * Added handling for the "dismiss and notify" and "accept and notify"
+     user prompt handler states
+   * Updated proxy handling to more closely align with the spec language
+
+v3.5.1.0
+========
+ * Updates to JavaScript automation atoms.
+ * Updated IE driver atoms to properly return element position. A recent
+   update to the Closure compiler caused a regression in the IE driver as
+   it was more aggressive about renaming properties of objects returned
+   from JavaScript functions than previous versions. This release adds a
+   custom IE-only atom that avoids this behavior of the compiler, and lets
+   the driver properly return an element's location. Fixes issue #4480.
+
+v3.5.0.0
+========
+ * Release to synchronize with release of Selenium project.
+ * Updates to JavaScript automation atoms.
+ * To successfully use this version of the IE driver, you should be using
+   version 3.5 or above of the language bindings. Those are the only versions
+   of language bindings that will understand the payload required to be sent
+   during the creation of a new session. Earlier versions of the language
+   bindings are not guaranteed to be fully compatible with this release of
+   the IE driver.
+
 v3.4.0.1
 ========
  * This release adds the remote protocol end points and handling of commands

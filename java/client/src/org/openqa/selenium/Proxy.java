@@ -53,6 +53,7 @@ public class Proxy {
   private String noProxy;
   private String sslProxy;
   private String socksProxy;
+  private Integer socksVersion;
   private String socksUsername;
   private String socksPassword;
   private String proxyAutoconfigUrl;
@@ -79,6 +80,9 @@ public class Proxy {
     }
     if (raw.containsKey("socksProxy") && raw.get("socksProxy") != null) {
       setSocksProxy((String) raw.get("socksProxy"));
+    }
+    if (raw.containsKey("socksVersion") && raw.get("socksVersion") != null) {
+      setSocksVersion((Integer) raw.get("socksVersion"));
     }
     if (raw.containsKey("socksUsername") && raw.get("socksUsername") != null) {
       setSocksUsername((String) raw.get("socksUsername"));
@@ -114,6 +118,9 @@ public class Proxy {
     }
     if (socksProxy != null) {
       m.put("socksProxy", socksProxy);
+    }
+    if (socksVersion != null) {
+      m.put("socksVersion", socksVersion);
     }
     if (socksUsername != null) {
       m.put("socksUsername", socksUsername);
@@ -294,6 +301,28 @@ public class Proxy {
   }
 
   /**
+   * Gets the SOCKS version (4 or 5).
+   *
+   * @return the SOCKS version if present, null otherwise
+   */
+  public Integer getSocksVersion() {
+    return socksVersion;
+  }
+
+  /**
+   * Specifies which version of SOCKS to use (4 or 5).
+   *
+   * @param socksVersion SOCKS version, 4 or 5
+   * @return reference to self
+   */
+  public Proxy setSocksVersion(Integer socksVersion) {
+    verifyProxyTypeCompatibility(ProxyType.MANUAL);
+    this.proxyType = ProxyType.MANUAL;
+    this.socksVersion = socksVersion;
+    return this;
+  }
+
+  /**
    * Gets the SOCKS proxy's username.  Supported by SOCKS v5 and above.
    *
    * @return the SOCKS proxy's username
@@ -399,6 +428,7 @@ public class Proxy {
         builder.append("pac: ").append(getProxyAutoconfigUrl());
         break;
 
+      case RESERVED_1:
       case UNSPECIFIED:
         break;
     }
@@ -440,6 +470,7 @@ public class Proxy {
            Objects.equals(getNoProxy(), proxy.getNoProxy()) &&
            Objects.equals(getSslProxy(), proxy.getSslProxy()) &&
            Objects.equals(getSocksProxy(), proxy.getSocksProxy()) &&
+           Objects.equals(getSocksVersion(), proxy.getSocksVersion()) &&
            Objects.equals(getSocksUsername(), proxy.getSocksUsername()) &&
            Objects.equals(getSocksPassword(), proxy.getSocksPassword()) &&
            Objects.equals(getProxyAutoconfigUrl(), proxy.getProxyAutoconfigUrl());
@@ -455,6 +486,7 @@ public class Proxy {
         getNoProxy(),
         getSslProxy(),
         getSocksProxy(),
+        getSocksVersion(),
         getSocksUsername(),
         getSocksPassword(),
         getProxyAutoconfigUrl());

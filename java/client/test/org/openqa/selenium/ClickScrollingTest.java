@@ -28,10 +28,10 @@ import static org.openqa.selenium.support.ui.ExpectedConditions.presenceOfElemen
 import static org.openqa.selenium.support.ui.ExpectedConditions.titleIs;
 import static org.openqa.selenium.testing.Driver.ALL;
 import static org.openqa.selenium.testing.Driver.CHROME;
+import static org.openqa.selenium.testing.Driver.FIREFOX;
 import static org.openqa.selenium.testing.Driver.HTMLUNIT;
 import static org.openqa.selenium.testing.Driver.IE;
 import static org.openqa.selenium.testing.Driver.MARIONETTE;
-import static org.openqa.selenium.testing.Driver.PHANTOMJS;
 import static org.openqa.selenium.testing.Driver.SAFARI;
 import static org.openqa.selenium.testing.TestUtilities.catchThrowable;
 
@@ -106,6 +106,18 @@ public class ClickScrollingTest extends JUnit4TestBase {
   }
 
   @Test
+  @Ignore(value = IE, issue = "716")
+  @Ignore(value = FIREFOX, issue = "716")
+  @Ignore(value = MARIONETTE, issue = "https://github.com/mozilla/geckodriver/issues/915")
+  @Ignore(value = SAFARI, reason = "not tested")
+  public void testShouldBeAbleToClickOnAnElementPartiallyHiddenByOverflow() {
+    driver.get(appServer.whereIs("scrolling_tests/page_with_partially_hidden_element.html"));
+
+    driver.findElement(By.id("btn")).click();
+    wait.until(titleIs("Clicked Successfully!"));
+  }
+
+  @Test
   public void testShouldNotScrollOverflowElementsWhichAreVisible() {
     driver.get(appServer.whereIs("scroll2.html"));
     WebElement list = driver.findElement(By.tagName("ul"));
@@ -118,7 +130,6 @@ public class ClickScrollingTest extends JUnit4TestBase {
 
   @Test
   @Ignore(CHROME)
-  @Ignore(PHANTOMJS)
   @Ignore(value = SAFARI,
       reason = "Safari: button1 is scrolled to the bottom edge of the view, " +
                "so additonal scrolling is still required for button2")

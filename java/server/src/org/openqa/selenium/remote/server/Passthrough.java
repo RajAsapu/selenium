@@ -25,7 +25,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.io.CharStreams;
 import com.google.common.net.MediaType;
 
-import org.openqa.selenium.remote.Dialect;
 import org.openqa.selenium.remote.http.HttpRequest;
 import org.openqa.selenium.remote.http.HttpResponse;
 
@@ -60,11 +59,9 @@ class Passthrough implements SessionCodec {
       .build();
 
   private final URL upstream;
-  private Dialect dialect;
 
   public Passthrough(URL upstream) {
     this.upstream = upstream;
-    this.dialect = dialect;
   }
 
   @Override
@@ -122,9 +119,7 @@ class Passthrough implements SessionCodec {
         .forEach(entry -> {
           entry.getValue().stream()
               .filter(Objects::nonNull)
-              .forEach(value -> {
-                resp.addHeader(entry.getKey(), value);
-              });
+              .forEach(value -> resp.addHeader(entry.getKey(), value));
         });
     InputStream in = connection.getErrorStream();
     if (in == null) {

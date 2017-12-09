@@ -18,7 +18,6 @@
 """Tests for advanced user interactions."""
 import pytest
 
-from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
@@ -98,8 +97,7 @@ def testDragAndDrop(driver, pages):
 
 
 @pytest.mark.xfail_marionette(
-    reason='https://bugzilla.mozilla.org/show_bug.cgi?id=1292178',
-    raises=WebDriverException)
+    reason='https://github.com/mozilla/geckodriver/issues/661')
 def testDoubleClick(driver, pages):
     """Copied from org.openqa.selenium.interactions.TestBasicMouseInterface."""
     pages.load("javascriptPage.html")
@@ -112,11 +110,6 @@ def testDoubleClick(driver, pages):
     assert "DoubleClicked" == toDoubleClick.get_attribute('value')
 
 
-@pytest.mark.xfail_marionette(
-    reason='https://bugzilla.mozilla.org/show_bug.cgi?id=1292178',
-    raises=WebDriverException)
-@pytest.mark.xfail_phantomjs(
-    reason='https://github.com/ariya/phantomjs/issues/14005')
 def testContextClick(driver, pages):
     """Copied from org.openqa.selenium.interactions.TestBasicMouseInterface."""
     pages.load("javascriptPage.html")
@@ -154,7 +147,8 @@ def testCannotMoveToANullLocator(driver, pages):
 
 @pytest.mark.xfail_marionette(
     reason='https://bugzilla.mozilla.org/show_bug.cgi?id=1292178')
-@pytest.mark.xfail_phantomjs
+@pytest.mark.xfail_firefox
+@pytest.mark.xfail_remote
 def testClickingOnFormElements(driver, pages):
     """Copied from org.openqa.selenium.interactions.CombinedInputActionsTest."""
     pages.load("formSelectionPage.html")
@@ -176,7 +170,6 @@ def testClickingOnFormElements(driver, pages):
 
 @pytest.mark.xfail_marionette(
     reason='https://bugzilla.mozilla.org/show_bug.cgi?id=1292178')
-@pytest.mark.xfail_phantomjs
 def testSelectingMultipleItems(driver, pages):
     """Copied from org.openqa.selenium.interactions.CombinedInputActionsTest."""
     pages.load("selectableItems.html")
@@ -200,6 +193,8 @@ def testSelectingMultipleItems(driver, pages):
     assert "#item7" == reportingElement.text
 
 
+@pytest.mark.xfail_marionette(
+    reason='https://github.com/mozilla/geckodriver/issues/646')
 def testSendingKeysToActiveElementWithModifier(driver, pages):
     pages.load("formPage.html")
     e = driver.find_element_by_id("working")
@@ -216,3 +211,22 @@ def testSendingKeysToActiveElementWithModifier(driver, pages):
 
 def test_can_reset_interactions(driver, pages):
     ActionChains(driver).reset_actions()
+
+
+def test_can_pause(driver, pages):
+    from time import time
+    pages.load("javascriptPage.html")
+
+    pause_time = 2
+    toClick = driver.find_element_by_id("clickField")
+    toDoubleClick = driver.find_element_by_id("doubleClickField")
+
+    pause = ActionChains(driver).click(toClick).pause(pause_time).click(toDoubleClick)
+
+    start = time()
+    pause.perform()
+    end = time()
+
+    assert pause_time < end - start
+    assert "Clicked" == toClick.get_attribute('value')
+    assert "Clicked" == toDoubleClick.get_attribute('value')

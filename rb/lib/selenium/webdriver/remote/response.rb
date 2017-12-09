@@ -1,5 +1,3 @@
-# encoding: utf-8
-#
 # Licensed to the Software Freedom Conservancy (SFC) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -22,6 +20,8 @@ module Selenium
     module Remote
       # @api private
       class Response
+        STACKTRACE_KEY = 'stackTrace'.freeze
+
         attr_reader :code, :payload
         attr_writer :payload
 
@@ -73,11 +73,25 @@ module Selenium
         end
 
         def add_backtrace(ex)
-          return unless value.is_a?(Hash) && value['stackTrace']
+          return unless error_payload.is_a?(Hash)
 
-          server_trace = value['stackTrace']
+          server_trace = error_payload[STACKTRACE_KEY] ||
+                         error_payload[STACKTRACE_KEY.downcase] ||
+                         error_payload['value'][STACKTRACE_KEY]
+          return unless server_trace
 
-          backtrace = server_trace.map do |frame|
+          backtrace = case server_trace
+                      when Array
+                        backtrace_from_remote(server_trace)
+                      when String
+                        server_trace.split("\n")
+                      end
+
+          ex.set_backtrace(backtrace + ex.backtrace)
+        end
+
+        def backtrace_from_remote(server_trace)
+          server_trace.map do |frame|
             next unless frame.is_a?(Hash)
 
             file = frame['fileName']
@@ -91,8 +105,6 @@ module Selenium
 
             "[remote server] #{file}:#{line}:in `#{meth}'"
           end.compact
-
-          ex.set_backtrace(backtrace + ex.backtrace)
         end
 
         def error_payload

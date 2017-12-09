@@ -1,5 +1,3 @@
-# encoding: utf-8
-#
 # Licensed to the Software Freedom Conservancy (SFC) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -58,9 +56,14 @@ module Selenium
         end
       end
 
-      it 'allows to deprecate functionality' do
+      it 'allows to deprecate functionality with replacement' do
         message = /WARN Selenium \[DEPRECATION\] #old is deprecated\. Use #new instead\./
         expect { WebDriver.logger.deprecate('#old', '#new') }.to output(message).to_stdout
+      end
+
+      it 'allows to deprecate functionality without replacement' do
+        message = /WARN Selenium \[DEPRECATION\] #old is deprecated and will be removed in the next releases\./
+        expect { WebDriver.logger.deprecate('#old') }.to output(message).to_stdout
       end
     end
   end # WebDriver

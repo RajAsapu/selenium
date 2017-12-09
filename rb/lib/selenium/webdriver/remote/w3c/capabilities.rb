@@ -1,5 +1,3 @@
-# encoding: utf-8
-#
 # Licensed to the Software Freedom Conservancy (SFC) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -20,12 +18,6 @@
 module Selenium
   module WebDriver
     module Remote
-      def self.const_missing(const_name)
-        super unless const_name == :W3CCapabilities
-        WebDriver.logger.deprecate 'Selenium::WebDriver::Remote::W3CCapabilities', 'Selenium::WebDriver::Remote::Capabilities'
-        W3C::Capabilities
-      end
-
       module W3C
 
         #
@@ -35,29 +27,32 @@ module Selenium
         # @api private
         #
 
-        # TODO - uncomment when Mozilla fixes this:
-        # https://bugzilla.mozilla.org/show_bug.cgi?id=1326397
         class Capabilities
 
           EXTENSION_CAPABILITY_PATTERN = /\A[\w-]+:.*\z/
 
-          # TODO (alex): compare with spec
           KNOWN = [
             :browser_name,
             :browser_version,
             :platform_name,
-            :platform_version,
             :accept_insecure_certs,
             :page_load_strategy,
             :proxy,
+            :set_window_rect,
+            :timeouts,
+            :unhandled_prompt_behavior,
+
+            # remote-specific
             :remote_session_id,
+
+            # TODO (alex): deprecate in favor of Firefox::Options?
             :accessibility_checks,
             :device,
+
+            # TODO (alex): deprecate compatibility with OSS-capabilities
             :implicit_timeout,
             :page_load_timeout,
             :script_timeout,
-            :unhandled_prompt_behavior,
-            :timeouts,
           ].freeze
 
           KNOWN.each do |key|
@@ -96,7 +91,7 @@ module Selenium
               opts[:platform_name] = opts.delete(:platform) if opts.key?(:platform)
               opts[:timeouts] = {}
               opts[:timeouts]['implicit'] = opts.delete(:implicit_timeout) if opts.key?(:implicit_timeout)
-              opts[:timeouts]['page load'] = opts.delete(:page_load_timeout) if opts.key?(:page_load_timeout)
+              opts[:timeouts]['pageLoad'] = opts.delete(:page_load_timeout) if opts.key?(:page_load_timeout)
               opts[:timeouts]['script'] = opts.delete(:script_timeout) if opts.key?(:script_timeout)
               new({browser_name: 'firefox', marionette: true}.merge(opts))
             end
@@ -114,7 +109,6 @@ module Selenium
               caps.browser_name = data.delete('browserName')
               caps.browser_version = data.delete('browserVersion')
               caps.platform_name = data.delete('platformName')
-              caps.platform_version = data.delete('platformVersion')
               caps.accept_insecure_certs = data.delete('acceptInsecureCerts') if data.key?('acceptInsecureCerts')
               caps.page_load_strategy = data.delete('pageLoadStrategy')
               timeouts = data.delete('timeouts')
@@ -156,11 +150,6 @@ module Selenium
 
                 capability_name = name.to_s
 
-                if capability_name == 'firefox_options'
-                  msg = ':firefox_options is no longer a valid parameter for Remote::Capabilities, use Firefox::Options instead'
-                  raise Error::WebDriverError msg
-                end
-
                 snake_cased_capability_names = KNOWN.map(&:to_s)
                 camel_cased_capability_names = snake_cased_capability_names.map(&w3c_capabilities.method(:camel_case))
 
@@ -169,6 +158,27 @@ module Selenium
                             capability_name.match(EXTENSION_CAPABILITY_PATTERN)
 
                 w3c_capabilities[name] = value
+              end
+
+              # User can pass :firefox_options or :firefox_profile.
+              #
+              # TODO (alex): Refactor this whole method into converter class.
+              firefox_options = oss_capabilities['firefoxOptions'] || oss_capabilities['firefox_options'] || oss_capabilities[:firefox_options]
+              firefox_profile = oss_capabilities['firefox_profile'] || oss_capabilities[:firefox_profile]
+              firefox_binary  = oss_capabilities['firefox_binary'] || oss_capabilities[:firefox_binary]
+
+              if firefox_profile && firefox_options
+                second_profile = firefox_options['profile'] || firefox_options[:profile]
+                if second_profile && firefox_profile != second_profile
+                  raise Error::WebDriverError, 'You cannot pass 2 different Firefox profiles'
+                end
+              end
+
+              if firefox_options || firefox_profile || firefox_binary
+                options = WebDriver::Firefox::Options.new(firefox_options || {})
+                options.binary = firefox_binary if firefox_binary
+                options.profile = firefox_profile if firefox_profile
+                w3c_capabilities.merge!(options.as_json)
               end
 
               w3c_capabilities
@@ -180,7 +190,6 @@ module Selenium
           # @option :browser_name             [String] required browser name
           # @option :browser_version          [String] required browser version number
           # @option :platform_name            [Symbol] one of :any, :win, :mac, or :x
-          # @option :platform_version         [String] required platform version number
           # @option :accept_insecure_certs    [Boolean] does the driver accept insecure SSL certifications?
           # @option :proxy                    [Selenium::WebDriver::Proxy, Hash] proxy configuration
           #
@@ -237,7 +246,10 @@ module Selenium
               when :platform
                 hash['platform'] = value.to_s.upcase
               when :proxy
-                hash['proxy'] = value.as_json if value
+                if value
+                  hash['proxy'] = value.as_json
+                  hash['proxy']['proxyType'] &&= hash['proxy']['proxyType'].downcase
+                end
               when String, :firefox_binary
                 hash[key.to_s] = value
               when Symbol

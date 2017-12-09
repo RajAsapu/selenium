@@ -19,24 +19,20 @@ package org.openqa.selenium.remote;
 
 import static org.openqa.selenium.remote.CapabilityType.ACCEPT_INSECURE_CERTS;
 import static org.openqa.selenium.remote.CapabilityType.BROWSER_NAME;
-import static org.openqa.selenium.remote.CapabilityType.LOGGING_PREFS;
 import static org.openqa.selenium.remote.CapabilityType.PLATFORM;
 import static org.openqa.selenium.remote.CapabilityType.SUPPORTS_JAVASCRIPT;
-import static org.openqa.selenium.remote.CapabilityType.UNEXPECTED_ALERT_BEHAVIOUR;
-import static org.openqa.selenium.remote.CapabilityType.UNHANDLED_PROMPT_BEHAVIOUR;
 import static org.openqa.selenium.remote.CapabilityType.VERSION;
 
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.Platform;
-import org.openqa.selenium.WebDriverException;
-import org.openqa.selenium.logging.LogLevelMapping;
-import org.openqa.selenium.logging.LoggingPreferences;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class DesiredCapabilities extends MutableCapabilities {
+
+  private static final Logger LOG = Logger.getLogger(Capabilities.class.getName());
 
   public DesiredCapabilities(String browser, String version, Platform platform) {
     setCapability(BROWSER_NAME, browser);
@@ -112,41 +108,17 @@ public class DesiredCapabilities extends MutableCapabilities {
     return this;
   }
 
-  public void setCapability(String key, Object value) {
-    if (LOGGING_PREFS.equals(key) && value instanceof Map) {
-      LoggingPreferences prefs = new LoggingPreferences();
-      Map<String, String> prefsMap = (Map<String, String>) value;
-
-      for (String logType : prefsMap.keySet()) {
-        prefs.enable(logType, LogLevelMapping.toLevel(prefsMap.get(logType)));
-      }
-      super.setCapability(LOGGING_PREFS, prefs);
-
-    } else if (PLATFORM.equals(key) && value instanceof String) {
-      try {
-        super.setCapability(key, Platform.fromString((String) value));
-      } catch (WebDriverException e) {
-        super.setCapability(key, value);
-      }
-
-    } else if (UNEXPECTED_ALERT_BEHAVIOUR.equals(key)) {
-      super.setCapability(UNEXPECTED_ALERT_BEHAVIOUR, value);
-      super.setCapability(UNHANDLED_PROMPT_BEHAVIOUR, value);
-
-    } else {
-      super.setCapability(key, value);
-    }
-  }
-
   public static DesiredCapabilities android() {
     return new DesiredCapabilities(BrowserType.ANDROID, "", Platform.ANDROID);
   }
 
   public static DesiredCapabilities chrome() {
+    LOG.info("Using `new ChromeOptions()` is preferred to `DesiredCapabilities.chrome()`");
     return new DesiredCapabilities(BrowserType.CHROME, "", Platform.ANY);
   }
 
   public static DesiredCapabilities firefox() {
+    LOG.info("Using `new FirefoxOptions()` is preferred to `DesiredCapabilities.firefox()`");
     DesiredCapabilities capabilities = new DesiredCapabilities(
         BrowserType.FIREFOX,
         "",
@@ -161,6 +133,7 @@ public class DesiredCapabilities extends MutableCapabilities {
   }
 
   public static DesiredCapabilities edge() {
+    LOG.info("Using `new EdgeOptions()` is preferred to `DesiredCapabilities.edge()`");
     return new DesiredCapabilities(BrowserType.EDGE, "", Platform.WINDOWS);
   }
   public static DesiredCapabilities internetExplorer() {
@@ -188,39 +161,20 @@ public class DesiredCapabilities extends MutableCapabilities {
   }
 
   public static DesiredCapabilities operaBlink() {
+    LOG.info("Using `new OperaOptions()` is preferred to `DesiredCapabilities.operaBlink()`");
     return new DesiredCapabilities(BrowserType.OPERA_BLINK, "", Platform.ANY);
   }
 
   public static DesiredCapabilities safari() {
+    LOG.info("Using `new SafariOptions()` is preferred to `DesiredCapabilities.safari()`");
     return new DesiredCapabilities(BrowserType.SAFARI, "", Platform.MAC);
   }
 
+  /**
+   * @deprecated PhantomJS is no longer actively developed, and support will eventually be dropped.
+   */
+  @Deprecated
   public static DesiredCapabilities phantomjs() {
     return new DesiredCapabilities(BrowserType.PHANTOMJS, "", Platform.ANY);
   }
-
-  @Override
-  public String toString() {
-    return String.format("Capabilities [%s]", shortenMapValues(asMap()));
-  }
-
-  private Map<String, ?> shortenMapValues(Map<String, ?> map) {
-    Map<String, Object> newMap = new HashMap<>();
-
-    for (Map.Entry<String, ?> entry : map.entrySet()) {
-      if (entry.getValue() instanceof Map) {
-        newMap.put(entry.getKey(), shortenMapValues((Map<String, ?>) entry.getValue()));
-
-      } else {
-        String value = String.valueOf(entry.getValue());
-        if (value.length() > 1024) {
-          value = value.substring(0, 29) + "...";
-        }
-        newMap.put(entry.getKey(), value);
-      }
-    }
-
-    return newMap;
-  }
-
 }

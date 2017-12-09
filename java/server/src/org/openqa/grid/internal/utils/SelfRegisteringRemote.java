@@ -34,6 +34,7 @@ import org.openqa.grid.internal.utils.configuration.GridHubConfiguration;
 import org.openqa.grid.internal.utils.configuration.GridNodeConfiguration;
 import org.openqa.grid.shared.GridNodeServer;
 import org.openqa.grid.web.servlet.DisplayHelpServlet;
+import org.openqa.grid.web.servlet.NodeW3CStatusServlet;
 import org.openqa.grid.web.servlet.ResourceServlet;
 import org.openqa.grid.web.utils.ExtraServletUtil;
 import org.openqa.selenium.Platform;
@@ -67,6 +68,10 @@ public class SelfRegisteringRemote {
 
   private boolean hasId;
 
+  public SelfRegisteringRemote(GridNodeConfiguration configuration) {
+    this(RegistrationRequest.build(configuration));
+  }
+
   public SelfRegisteringRemote(RegistrationRequest request) {
     this.registrationRequest = request;
     this.httpClientFactory = new HttpClientFactory();
@@ -88,6 +93,10 @@ public class SelfRegisteringRemote {
         "error getting the parameters from the hub. The node may end up with wrong timeouts." + e
           .getMessage());
     }
+
+    // add the status servlet
+    nodeServlets.put("/status", NodeW3CStatusServlet.class);
+    nodeServlets.put("/wd/hub/status", NodeW3CStatusServlet.class);
 
     // add the resource servlet for nodes
     if (!registrationRequest.getConfiguration().isWithOutServlet(ResourceServlet.class)) {
@@ -157,6 +166,7 @@ public class SelfRegisteringRemote {
     }
     cap.setCapability(RegistrationRequest.MAX_INSTANCES, instances);
     registrationRequest.getConfiguration().capabilities.add(cap);
+    registrationRequest.getConfiguration().fixUpCapabilities();
   }
 
   /**

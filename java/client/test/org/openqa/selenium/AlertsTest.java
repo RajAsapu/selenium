@@ -32,7 +32,6 @@ import static org.openqa.selenium.testing.Driver.FIREFOX;
 import static org.openqa.selenium.testing.Driver.HTMLUNIT;
 import static org.openqa.selenium.testing.Driver.IE;
 import static org.openqa.selenium.testing.Driver.MARIONETTE;
-import static org.openqa.selenium.testing.Driver.PHANTOMJS;
 import static org.openqa.selenium.testing.Driver.SAFARI;
 import static org.openqa.selenium.testing.TestUtilities.catchThrowable;
 import static org.openqa.selenium.testing.TestUtilities.getFirefoxVersion;
@@ -52,7 +51,6 @@ import org.openqa.selenium.testing.SwitchToTopAfterTest;
 import java.util.Set;
 
 @Ignore(value = CHROME, reason = "https://bugs.chromium.org/p/chromedriver/issues/detail?id=1500")
-@Ignore(PHANTOMJS)
 @Ignore(SAFARI)
 public class AlertsTest extends JUnit4TestBase {
 
@@ -109,6 +107,20 @@ public class AlertsTest extends JUnit4TestBase {
 
     // If we can perform any action, we're good to go
     assertEquals("Testing Alerts", driver.getTitle());
+  }
+
+  @Test
+  public void testShouldThrowIllegalArgumentExceptionWhenKeysNull() {
+    driver.get(alertPage("cheese"));
+
+    driver.findElement(By.id("alert")).click();
+    Alert alert = wait.until(alertIsPresent());
+    try {
+      Throwable t = catchThrowable(() -> alert.sendKeys(null));
+      assertThat(t, instanceOf(IllegalArgumentException.class));
+    } finally {
+      alert.accept();
+    }
   }
 
   @Test
@@ -184,7 +196,7 @@ public class AlertsTest extends JUnit4TestBase {
     assertEquals("Testing Prompt", driver.getTitle());
   }
 
-  @NotYetImplemented(value = MARIONETTE, reason = "https://github.com/mozilla/geckodriver/issues/607")
+  @Test
   public void testShouldAllowAUserToSetTheValueOfAPrompt() {
     driver.get(promptPage(null));
 
@@ -198,7 +210,6 @@ public class AlertsTest extends JUnit4TestBase {
 
   @Test
   @Ignore(CHROME)
-  @Ignore(value = MARIONETTE, issue = "https://github.com/mozilla/geckodriver/issues/274")
   public void testSettingTheValueOfAnAlertThrows() {
     driver.get(alertPage("cheese"));
 
@@ -251,7 +262,6 @@ public class AlertsTest extends JUnit4TestBase {
 
   @SwitchToTopAfterTest
   @Test
-  @Ignore(MARIONETTE)
   public void testShouldAllowUsersToAcceptAnAlertInAFrame() {
     String iframe = appServer.create(new Page()
         .withBody("<a href='#' id='alertInFrame' onclick='alert(\"framed cheese\");'>click me</a>"));
@@ -270,7 +280,6 @@ public class AlertsTest extends JUnit4TestBase {
 
   @SwitchToTopAfterTest
   @Test
-  @Ignore(MARIONETTE)
   public void testShouldAllowUsersToAcceptAnAlertInANestedFrame() {
     String iframe = appServer.create(new Page()
         .withBody("<a href='#' id='alertInFrame' onclick='alert(\"framed cheese\");'>click me</a>"));
@@ -407,7 +416,6 @@ public class AlertsTest extends JUnit4TestBase {
   @Ignore(CHROME)
   @Ignore(FIREFOX)
   @Ignore(value = IE, reason = "Fails in versions 6 and 7")
-  @Ignore(MARIONETTE)
   public void testShouldNotHandleAlertInAnotherWindow() {
     String pageWithOnLoad = appServer.create(new Page()
         .withOnLoad("javascript:alert(\"onload\")")
@@ -559,7 +567,6 @@ public class AlertsTest extends JUnit4TestBase {
   }
 
   @Test
-  @Ignore(value = MARIONETTE, issue = "https://github.com/mozilla/geckodriver/issues/620")
   public void shouldHandleAlertOnFormSubmit() {
     driver.get(appServer.create(new Page().withTitle("Testing Alerts").withBody(
         "<form id='theForm' action='javascript:alert(\"Tasty cheese\");'>",

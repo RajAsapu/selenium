@@ -108,6 +108,17 @@ namespace OpenQA.Selenium.Firefox
         }
 
         /// <summary>
+        /// Gets a value indicating whether the service has a shutdown API that can be called to terminate
+        /// it gracefully before forcing a termination.
+        /// </summary>
+        protected override bool HasShutdown
+        {
+            // The Firefox driver executable does not have a clean shutdown command,
+            // which means we have to kill the process.
+            get { return false; }
+        }
+
+        /// <summary>
         /// Gets the command-line arguments for the driver service.
         /// </summary>
         protected override string CommandLineArguments
@@ -173,7 +184,7 @@ namespace OpenQA.Selenium.Firefox
         /// Creates a default instance of the FirefoxDriverService using a specified path to the Firefox driver executable with the given name.
         /// </summary>
         /// <param name="driverPath">The directory containing the Firefox driver executable.</param>
-        /// <param name="driverExecutableFileName">The name of th  Firefox driver executable file.</param>
+        /// <param name="driverExecutableFileName">The name of the Firefox driver executable file.</param>
         /// <returns>A FirefoxDriverService using a random port.</returns>
         public static FirefoxDriverService CreateDefaultService(string driverPath, string driverExecutableFileName)
         {

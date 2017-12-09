@@ -23,18 +23,15 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThan;
-import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeFalse;
-import static org.junit.Assume.assumeTrue;
 import static org.openqa.selenium.Platform.ANDROID;
 import static org.openqa.selenium.WaitingConditions.elementTextToContain;
 import static org.openqa.selenium.WaitingConditions.elementTextToEqual;
 import static org.openqa.selenium.WaitingConditions.newWindowIsOpened;
-import static org.openqa.selenium.remote.CapabilityType.ACCEPT_SSL_CERTS;
 import static org.openqa.selenium.support.ui.ExpectedConditions.not;
 import static org.openqa.selenium.support.ui.ExpectedConditions.presenceOfElementLocated;
 import static org.openqa.selenium.support.ui.ExpectedConditions.titleIs;
@@ -44,17 +41,14 @@ import static org.openqa.selenium.testing.Driver.FIREFOX;
 import static org.openqa.selenium.testing.Driver.HTMLUNIT;
 import static org.openqa.selenium.testing.Driver.IE;
 import static org.openqa.selenium.testing.Driver.MARIONETTE;
-import static org.openqa.selenium.testing.Driver.PHANTOMJS;
 import static org.openqa.selenium.testing.Driver.SAFARI;
 import static org.openqa.selenium.testing.TestUtilities.catchThrowable;
 import static org.openqa.selenium.testing.TestUtilities.getEffectivePlatform;
 import static org.openqa.selenium.testing.TestUtilities.isChrome;
-import static org.openqa.selenium.testing.TestUtilities.isLocal;
 
 import org.junit.After;
 import org.junit.Test;
 import org.openqa.selenium.remote.CapabilityType;
-import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.testing.Ignore;
 import org.openqa.selenium.testing.JUnit4TestBase;
@@ -76,15 +70,13 @@ public class PageLoadingTest extends JUnit4TestBase {
     if (localDriver != null) {
       localDriver.quit();
     }
-    DesiredCapabilities caps = new DesiredCapabilities();
-    caps.setCapability(CapabilityType.PAGE_LOAD_STRATEGY, strategy);
+    Capabilities caps = new ImmutableCapabilities(CapabilityType.PAGE_LOAD_STRATEGY, strategy);
     localDriver = new WebDriverBuilder().setDesiredCapabilities(caps).get();
   }
 
   @Test
   @Ignore(CHROME)
   @Ignore(SAFARI)
-  @Ignore(PHANTOMJS)
   @NeedsLocalEnvironment
   public void testNoneStrategyShouldNotWaitForPageToLoad() {
     initLocalDriver("none");
@@ -102,9 +94,7 @@ public class PageLoadingTest extends JUnit4TestBase {
   }
 
   @Test
-  @Ignore(CHROME)
   @Ignore(SAFARI)
-  @Ignore(PHANTOMJS)
   @NeedsLocalEnvironment
   public void testNoneStrategyShouldNotWaitForPageToRefresh() {
     initLocalDriver("none");
@@ -129,7 +119,6 @@ public class PageLoadingTest extends JUnit4TestBase {
   @Ignore(IE)
   @Ignore(CHROME)
   @Ignore(SAFARI)
-  @Ignore(PHANTOMJS)
   @NeedsLocalEnvironment
   public void testEagerStrategyShouldNotWaitForResources() {
     initLocalDriver("eager");
@@ -153,7 +142,6 @@ public class PageLoadingTest extends JUnit4TestBase {
   @Ignore(IE)
   @Ignore(CHROME)
   @Ignore(SAFARI)
-  @Ignore(PHANTOMJS)
   @NeedsLocalEnvironment
   public void testEagerStrategyShouldNotWaitForResourcesOnRefresh() {
     initLocalDriver("eager");
@@ -231,7 +219,6 @@ public class PageLoadingTest extends JUnit4TestBase {
   @Test
   @Ignore(IE)
   @Ignore(SAFARI)
-  @Ignore(PHANTOMJS)
   @NeedsFreshDriver
   public void testShouldThrowIfUrlIsMalformed() {
     assumeFalse("Fails in Sauce Cloud", SauceDriver.shouldUseSauce());
@@ -242,7 +229,6 @@ public class PageLoadingTest extends JUnit4TestBase {
   @Test
   @Ignore(IE)
   @Ignore(SAFARI)
-  @Ignore(PHANTOMJS)
   @NeedsFreshDriver
   public void testShouldThrowIfUrlIsMalformedInPortPart() {
     assumeFalse("Fails in Sauce Cloud", SauceDriver.shouldUseSauce());
@@ -348,34 +334,12 @@ public class PageLoadingTest extends JUnit4TestBase {
 
   @Test
   @Ignore(IE)
-  @Ignore(PHANTOMJS)
   @Ignore(value = SAFARI, reason = "does not support insecure SSL")
   public void testShouldBeAbleToAccessPagesWithAnInsecureSslCertificate() {
     // TODO(user): Set the SSL capability to true.
     driver.get(appServer.whereIsSecure("simpleTest.html"));
 
     shortWait.until(titleIs("Hello WebDriver"));
-  }
-
-  @Test
-  @Ignore(CHROME)
-  @Ignore(IE)
-  @Ignore(SAFARI)
-  @Ignore(PHANTOMJS)
-  @Ignore(MARIONETTE)
-  public void shouldBeAbleToDisableAcceptOfInsecureSslCertsWithRequiredCapability() {
-    // TODO: Resolve why this test doesn't work on the remote server
-    assumeTrue(isLocal());
-
-    DesiredCapabilities requiredCaps = new DesiredCapabilities();
-    requiredCaps.setCapability(ACCEPT_SSL_CERTS, false);
-    WebDriverBuilder builder = new WebDriverBuilder().setRequiredCapabilities(requiredCaps);
-    localDriver = builder.get();
-
-    String url = appServer.whereIsSecure("simpleTest.html");
-    localDriver.get(url);
-
-    assertThat(localDriver.getTitle(), not("Hello WebDriver"));
   }
 
   @Test
@@ -399,6 +363,7 @@ public class PageLoadingTest extends JUnit4TestBase {
   @Test
   @Ignore(IE)
   @Ignore(value = SAFARI, reason = "issue 4062")
+  @Ignore(MARIONETTE)
   public void testShouldNotHangIfDocumentOpenCallIsNeverFollowedByDocumentCloseCall()
       throws Exception {
     driver.get(pages.documentWrite);
@@ -412,13 +377,25 @@ public class PageLoadingTest extends JUnit4TestBase {
   // if @NoDriverAfterTest can be removed from some other tests in this class.
   @NoDriverAfterTest
   @Test
-  @Ignore(PHANTOMJS)
   @Ignore(FIREFOX)
   @Ignore(value = SAFARI, reason = "issue 687, comment 41")
   @NeedsLocalEnvironment
   public void testPageLoadTimeoutCanBeChanged() {
     testPageLoadTimeoutIsEnforced(2);
     testPageLoadTimeoutIsEnforced(3);
+  }
+
+  @NoDriverAfterTest
+  @Test
+  @Ignore(FIREFOX)
+  @Ignore(value = SAFARI, reason = "issue 687, comment 41")
+  @NeedsLocalEnvironment
+  public void testCanHandleSequentialPageLoadTimeouts() {
+    long pageLoadTimeout = 2;
+    long pageLoadTimeBuffer = 10;
+    driver.manage().timeouts().pageLoadTimeout(2, SECONDS);
+    assertPageLoadTimeoutIsEnforced(pageLoadTimeout, pageLoadTimeBuffer);
+    assertPageLoadTimeoutIsEnforced(pageLoadTimeout, pageLoadTimeBuffer);
   }
 
   @NoDriverAfterTest // Subsequent tests sometimes fail on Firefox.
@@ -439,17 +416,12 @@ public class PageLoadingTest extends JUnit4TestBase {
 
   @NoDriverAfterTest // Subsequent tests sometimes fail on Firefox.
   @Test
-  @Ignore(value = MARIONETTE)
   @Ignore(value = SAFARI, reason = "issue 687, comment 41")
+  @Ignore(value = FIREFOX, travis = true)
+  @Ignore(HTMLUNIT)
+  @Ignore(value = CHROME, issue = "https://code.google.com/p/chromedriver/issues/detail?id=1125")
   @NeedsLocalEnvironment
   public void testShouldTimeoutIfAPageTakesTooLongToLoadAfterClick() {
-    // Fails on Chrome 44 (and higher?) https://code.google.com/p/chromedriver/issues/detail?id=1125
-    assumeFalse(
-        "chrome".equals(((HasCapabilities) driver).getCapabilities().getBrowserName())
-        && "44".compareTo(((HasCapabilities) driver).getCapabilities().getVersion()) <= 0);
-    assumeFalse(
-        "htmlunit".equals(((HasCapabilities) driver).getCapabilities().getBrowserName()));
-
     driver.manage().timeouts().pageLoadTimeout(2, SECONDS);
 
     driver.get(appServer.whereIs("page_with_link_to_slow_loading_page.html"));
@@ -547,7 +519,11 @@ public class PageLoadingTest extends JUnit4TestBase {
     // Test page will load this many seconds longer than WD pageLoadTimeout.
     long pageLoadTimeBuffer = 10;
     driver.manage().timeouts().pageLoadTimeout(webDriverPageLoadTimeout, SECONDS);
+    assertPageLoadTimeoutIsEnforced(webDriverPageLoadTimeout, pageLoadTimeBuffer);
+  }
 
+  private void assertPageLoadTimeoutIsEnforced(long webDriverPageLoadTimeout,
+                                               long pageLoadTimeBuffer) {
     long start = System.currentTimeMillis();
     try {
       driver.get(appServer.whereIs(

@@ -200,6 +200,10 @@ class RemoteConnection(object):
             port = parsed_url.port or None
             if parsed_url.scheme == "https":
                 ip = parsed_url.hostname
+            elif port and not common_utils.is_connectable(port, parsed_url.hostname):
+                ip = None
+                LOGGER.info('Could not connect to port {} on host '
+                            '{}'.format(port, parsed_url.hostname))
             else:
                 ip = common_utils.find_connectable_ip(parsed_url.hostname,
                                                       port=port)
@@ -350,20 +354,12 @@ class RemoteConnection(object):
                 ('POST', '/session/$sessionId/moveto'),
             Command.GET_WINDOW_SIZE:
                 ('GET', '/session/$sessionId/window/$windowHandle/size'),
-            Command.W3C_GET_WINDOW_SIZE:
-                ('GET', '/session/$sessionId/window/size'),
             Command.SET_WINDOW_SIZE:
                 ('POST', '/session/$sessionId/window/$windowHandle/size'),
-            Command.W3C_SET_WINDOW_SIZE:
-                ('POST', '/session/$sessionId/window/size'),
             Command.GET_WINDOW_POSITION:
                 ('GET', '/session/$sessionId/window/$windowHandle/position'),
             Command.SET_WINDOW_POSITION:
                 ('POST', '/session/$sessionId/window/$windowHandle/position'),
-            Command.W3C_GET_WINDOW_POSITION:
-                ('GET', '/session/$sessionId/window/position'),
-            Command.W3C_SET_WINDOW_POSITION:
-                ('POST', '/session/$sessionId/window/position'),
             Command.SET_WINDOW_RECT:
                 ('POST', '/session/$sessionId/window/rect'),
             Command.GET_WINDOW_RECT:
@@ -442,6 +438,10 @@ class RemoteConnection(object):
                 ('GET', '/session/$sessionId/contexts'),
             Command.SWITCH_TO_CONTEXT:
                 ('POST', '/session/$sessionId/context'),
+            Command.FULLSCREEN_WINDOW:
+                ('POST', '/session/$sessionId/window/fullscreen'),
+            Command.MINIMIZE_WINDOW:
+                ('POST', '/session/$sessionId/window/minimize')
         }
 
     def execute(self, command, params):
@@ -562,5 +562,5 @@ class RemoteConnection(object):
                 data = {'status': 0, 'value': body.strip()}
                 return data
         finally:
-            LOGGER.debug("Finished Request")
+            LOGGER.debug(u"Finished Request {}".format(data))
             resp.close()

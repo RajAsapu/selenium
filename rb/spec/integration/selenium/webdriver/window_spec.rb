@@ -1,5 +1,3 @@
-# encoding: utf-8
-#
 # Licensed to the Software Freedom Conservancy (SFC) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -22,6 +20,8 @@ require_relative 'spec_helper'
 module Selenium
   module WebDriver
     describe Window do
+      after { reset_driver! }
+
       let(:window) { driver.manage.window }
 
       it 'gets the size of the current window' do
@@ -33,19 +33,17 @@ module Selenium
         expect(size.height).to be > 0
       end
 
-      not_compliant_on browser: :safari do
-        it 'sets the size of the current window' do
-          size = window.size
+      it 'sets the size of the current window' do
+        size = window.size
 
-          target_width = size.width - 20
-          target_height = size.height - 20
+        target_width = size.width - 20
+        target_height = size.height - 20
 
-          window.size = Dimension.new(target_width, target_height)
+        window.size = Dimension.new(target_width, target_height)
 
-          new_size = window.size
-          expect(new_size.width).to eq(target_width)
-          expect(new_size.height).to eq(target_height)
-        end
+        new_size = window.size
+        expect(new_size.width).to eq(target_width)
+        expect(new_size.height).to eq(target_height)
       end
 
       it 'gets the position of the current window' do
@@ -57,102 +55,78 @@ module Selenium
         expect(pos.y).to be >= 0
       end
 
-      not_compliant_on browser: [:phantomjs, :safari] do
-        it 'sets the position of the current window' do
-          pos = window.position
+      it 'sets the position of the current window', except: {browser: :safari_preview} do
+        pos = window.position
 
-          target_x = pos.x + 10
-          target_y = pos.y + 10
+        target_x = pos.x + 10
+        target_y = pos.y + 10
 
-          window.position = Point.new(target_x, target_y)
+        window.position = Point.new(target_x, target_y)
 
-          wait.until { window.position.x != pos.x && window.position.y != pos.y }
+        wait.until { window.position.x != pos.x && window.position.y != pos.y }
 
-          new_pos = window.position
-          expect(new_pos.x).to eq(target_x)
-          expect(new_pos.y).to eq(target_y)
-        end
+        new_pos = window.position
+        expect(new_pos.x).to eq(target_x)
+        expect(new_pos.y).to eq(target_y)
       end
 
-      compliant_on browser: :ff_nightly do
-        # remote responds to OSS protocol which doesn't support rect commands
-        not_compliant_on driver: :remote do
-          it 'gets the rect of the current window' do
-            rect = driver.manage.window.rect
+      it 'gets the rect of the current window', only: {browser: %i[firefox ie]} do
+        rect = driver.manage.window.rect
 
-            expect(rect).to be_a(Rectangle)
+        expect(rect).to be_a(Rectangle)
 
-            expect(rect.x).to be >= 0
-            expect(rect.y).to be >= 0
-            expect(rect.width).to be >= 0
-            expect(rect.height).to be >= 0
-          end
-
-          it 'sets the rect of the current window' do
-            rect = window.rect
-
-            target_x = rect.x + 10
-            target_y = rect.y + 10
-            target_width = rect.width + 10
-            target_height = rect.height + 10
-
-            window.rect = Rectangle.new(target_x, target_y, target_width, target_height)
-
-            wait.until { window.rect.x != rect.x && window.rect.y != rect.y }
-
-            new_rect = window.rect
-            expect(new_rect.x).to eq(target_x)
-            expect(new_rect.y).to eq(target_y)
-            expect(new_rect.width).to eq(target_width)
-            expect(new_rect.height).to eq(target_height)
-          end
-      end
+        expect(rect.x).to be >= 0
+        expect(rect.y).to be >= 0
+        expect(rect.width).to be >= 0
+        expect(rect.height).to be >= 0
       end
 
-      # TODO: - Create Window Manager guard
-      not_compliant_on platform: :linux do
-        # Geckodriver issue: https://github.com/mozilla/geckodriver/issues/820
-        not_compliant_on browser: [:safari, :firefox] do
-          it 'can maximize the current window' do
-            window.size = old_size = Dimension.new(200, 200)
+      it 'sets the rect of the current window', only: {browser: %i[firefox ie]} do
+        rect = window.rect
 
-            window.maximize
+        target_x = rect.x + 10
+        target_y = rect.y + 10
+        target_width = rect.width + 10
+        target_height = rect.height + 10
 
-            wait.until { window.size != old_size }
+        window.rect = Rectangle.new(target_x, target_y, target_width, target_height)
 
-            new_size = window.size
-            expect(new_size.width).to be > old_size.width
-            expect(new_size.height).to be > old_size.height
-          end
-        end
+        wait.until { window.rect.x != rect.x && window.rect.y != rect.y }
+
+        new_rect = window.rect
+        expect(new_rect.x).to eq(target_x)
+        expect(new_rect.y).to eq(target_y)
+        expect(new_rect.width).to eq(target_width)
+        expect(new_rect.height).to eq(target_height)
       end
 
-      compliant_on browser: [:ff_nightly, :firefox, :edge] do
-        # Firefox - https://bugzilla.mozilla.org/show_bug.cgi?id=1189749
-        # Edge: Not Yet - https://dev.windows.com/en-us/microsoft-edge/platform/status/webdriver/details/
-        not_compliant_on browser: [:firefox, :ff_nightly, :edge] do
-          it 'can make window full screen' do
-            window.maximize
-            old_size = window.size
+      it 'can maximize the current window', except: {window_manager: false} do
+        window.size = old_size = Dimension.new(200, 200)
 
-            window.full_screen
+        window.maximize
 
-            new_size = window.size
-            expect(new_size.height).to be > old_size.height
-          end
-        end
+        wait.until { window.size != old_size }
+
+        new_size = window.size
+        expect(new_size.width).to be > old_size.width
+        expect(new_size.height).to be > old_size.height
       end
 
-      compliant_on browser: [:ff_nightly, :firefox, :edge] do
-        # Firefox - Not implemented yet, no bug to track
-        # Edge: Not Yet - https://dev.windows.com/en-us/microsoft-edge/platform/status/webdriver/details/
-        not_compliant_on browser: [:ff_nightly, :firefox, :edge] do
-          it 'can minimize the window' do
-            driver.execute_script('window.minimized = false; window.onblur = function(){ window.minimized = true };')
-            window.minimize
-            expect(driver.execute_script('return window.minimized;')).to be true
-          end
-        end
+      # Edge: Not Yet - https://dev.windows.com/en-us/microsoft-edge/platform/status/webdriver/details/
+      it 'can make window full screen', only: {window_manager: true, browser: [:ie, :firefox]} do
+        window.maximize
+        old_size = window.size
+
+        window.full_screen
+
+        new_size = window.size
+        expect(new_size.height).to be > old_size.height
+      end
+
+      # Edge: Not Yet - https://dev.windows.com/en-us/microsoft-edge/platform/status/webdriver/details/
+      it 'can minimize the window', only: {window_manager: true, browser: [:ie, :firefox]} do
+        window.minimize
+        expect(driver.execute_script('return document.hidden;')).to be true
       end
     end
   end # WebDriver

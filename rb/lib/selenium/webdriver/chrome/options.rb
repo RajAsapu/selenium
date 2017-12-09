@@ -1,5 +1,3 @@
-# encoding: utf-8
-#
 # Licensed to the Software Freedom Conservancy (SFC) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -81,7 +79,7 @@ module Selenium
         end
 
         #
-        # Add a command-line argument to use when starting Chrome
+        # Add a command-line argument to use when starting Chrome.
         #
         # @example Start Chrome maximized
         #   options = Selenium::WebDriver::Chrome::Options.new
@@ -129,11 +127,11 @@ module Selenium
         #
         # @example Start Chrome in mobile emulation mode by device name
         #   options = Selenium::WebDriver::Chrome::Options.new
-        #   options.add_emulated_device(device_name: 'iPhone 6')
+        #   options.add_emulation(device_name: 'iPhone 6')
         #
         # @example Start Chrome in mobile emulation mode by device metrics
         #   options = Selenium::WebDriver::Chrome::Options.new
-        #   options.add_emulated_device(device_metrics: {width: 400, height: 800, pixelRatio: 1, touch: true})
+        #   options.add_emulation(device_metrics: {width: 400, height: 800, pixelRatio: 1, touch: true})
         #
         # @param [String] device_name Name of the device or a hash containing width, height, pixelRatio, touch
         # @param [Hash] device_metrics Hash containing width, height, pixelRatio, touch
@@ -164,7 +162,7 @@ module Selenium
           opts[:prefs] = @prefs unless @prefs.empty?
           opts
         end
-      end # Profile
+      end # Options
     end # Chrome
   end # WebDriver
 end # Selenium

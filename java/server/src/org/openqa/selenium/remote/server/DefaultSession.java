@@ -29,7 +29,6 @@ import org.openqa.selenium.html5.LocationContext;
 import org.openqa.selenium.html5.WebStorage;
 import org.openqa.selenium.interactions.HasTouchScreen;
 import org.openqa.selenium.internal.FindsByCssSelector;
-import org.openqa.selenium.internal.Killable;
 import org.openqa.selenium.io.TemporaryFilesystem;
 import org.openqa.selenium.mobile.NetworkConnection;
 import org.openqa.selenium.remote.CapabilityType;
@@ -38,6 +37,7 @@ import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.remote.SessionId;
 import org.openqa.selenium.support.events.EventFiringWebDriver;
 
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
@@ -63,7 +63,7 @@ public class DefaultSession implements Session {
    * Happens-before the exexutor and is thereafter thread-confined to the executor thread.
    */
   private final KnownElements knownElements;
-  private final Capabilities capabilities; // todo: Investigate memory model implications of map
+  private final Map<String, Object> capabilities;
   // elements inside capabilities.
   private volatile String base64EncodedImage;
   private TemporaryFilesystem tempFs;
@@ -118,9 +118,7 @@ public class DefaultSession implements Session {
   public void close() {
     try {
       WebDriver driver = getDriver();
-      if (driver instanceof Killable) {
-        ((Killable) driver).kill();
-      } else if (driver != null) {
+      if (driver != null) {
         driver.close();
       }
     } catch (RuntimeException e) {
@@ -142,7 +140,7 @@ public class DefaultSession implements Session {
     return knownElements;
   }
 
-  public Capabilities getCapabilities() {
+  public Map<String, Object> getCapabilities() {
     return capabilities;
   }
 
@@ -160,7 +158,7 @@ public class DefaultSession implements Session {
 
     private final DriverFactory factory;
     private final Capabilities capabilities;
-    private volatile Capabilities describedCapabilities;
+    private volatile Map<String, Object> describedCapabilities;
     private volatile SessionId sessionId;
     private volatile boolean isAndroid = false;
 
@@ -185,7 +183,7 @@ public class DefaultSession implements Session {
       return new EventFiringWebDriver(rawDriver);
     }
 
-    public Capabilities getCapabilityDescription() {
+    public Map<String, Object> getCapabilityDescription() {
       return describedCapabilities;
     }
 
@@ -197,7 +195,7 @@ public class DefaultSession implements Session {
       return isAndroid;
     }
 
-    private DesiredCapabilities getDescription(WebDriver instance, Capabilities capabilities) {
+    private Map<String, Object> getDescription(WebDriver instance, Capabilities capabilities) {
       DesiredCapabilities caps = new DesiredCapabilities(capabilities.asMap());
       caps.setJavascriptEnabled(instance instanceof JavascriptExecutor);
       if (instance instanceof TakesScreenshot) {
@@ -224,7 +222,8 @@ public class DefaultSession implements Session {
       if (instance instanceof HasTouchScreen) {
         caps.setCapability(CapabilityType.HAS_TOUCHSCREEN, true);
       }
-      return caps;
+      //noinspection unchecked
+      return (Map<String, Object>) caps.asMap();
     }
   }
 

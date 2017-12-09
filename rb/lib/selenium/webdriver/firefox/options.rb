@@ -1,5 +1,3 @@
-# encoding: utf-8
-#
 # Licensed to the Software Freedom Conservancy (SFC) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -96,6 +94,18 @@ module Selenium
         end
 
         #
+        # Run Firefox in headless mode.
+        #
+        # @example Enable headless mode
+        #   options = Selenium::WebDriver::Firefox::Options.new
+        #   options.headless!
+        #
+
+        def headless!
+          add_argument '-headless'
+        end
+
+        #
         # Sets Firefox profile.
         #
         # @example Set the custom profile
@@ -133,7 +143,7 @@ module Selenium
 
           {KEY => opts}
         end
-      end # Profile
+      end # Options
     end # Firefox
   end # WebDriver
 end # Selenium

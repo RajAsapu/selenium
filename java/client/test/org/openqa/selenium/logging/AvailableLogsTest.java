@@ -25,14 +25,14 @@ import static org.openqa.selenium.remote.CapabilityType.ENABLE_PROFILING_CAPABIL
 import static org.openqa.selenium.testing.Driver.HTMLUNIT;
 import static org.openqa.selenium.testing.Driver.IE;
 import static org.openqa.selenium.testing.Driver.MARIONETTE;
-import static org.openqa.selenium.testing.Driver.PHANTOMJS;
 import static org.openqa.selenium.testing.Driver.SAFARI;
 import static org.openqa.selenium.testing.TestUtilities.isOldChromedriver;
 
 import org.junit.After;
 import org.junit.Test;
+import org.openqa.selenium.Capabilities;
+import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.testing.Ignore;
 import org.openqa.selenium.testing.JUnit4TestBase;
 import org.openqa.selenium.testing.drivers.WebDriverBuilder;
@@ -41,7 +41,6 @@ import java.util.Set;
 
 @Ignore(HTMLUNIT)
 @Ignore(IE)
-@Ignore(PHANTOMJS)
 @Ignore(MARIONETTE)
 public class AvailableLogsTest extends JUnit4TestBase {
 
@@ -102,8 +101,7 @@ public class AvailableLogsTest extends JUnit4TestBase {
   @Ignore(value = SAFARI, reason = "Safari does not support profiler logs")
   public void shouldBeAbleToEnableProfilerLog() {
     assumeFalse(isOldChromedriver(driver));
-    DesiredCapabilities caps = new DesiredCapabilities();
-    caps.setCapability(ENABLE_PROFILING_CAPABILITY, true);
+    Capabilities caps = new ImmutableCapabilities(ENABLE_PROFILING_CAPABILITY, true);
     WebDriverBuilder builder = new WebDriverBuilder().setDesiredCapabilities(caps);
     localDriver = builder.get();
     Set<String> logTypes = localDriver.manage().logs().getAvailableLogTypes();

@@ -180,7 +180,8 @@ public abstract class JUnit4TestBase implements WrapsDriver {
           throw new RuntimeException("Sauce-related failure. Tried re-creating the driver, but that failed too.", t);
         }
       } else {
-        throw Throwables.propagate(t);
+        Throwables.throwIfUnchecked(t);
+        throw new RuntimeException(t);
       }
     }
   }
@@ -304,6 +305,12 @@ public abstract class JUnit4TestBase implements WrapsDriver {
           }
           break;
 
+        case EDGE:
+          if (browser == Browser.edge) {
+            return true;
+          }
+          break;
+
         case MARIONETTE:
           if (browser != Browser.ff) {
             return false;
@@ -314,14 +321,16 @@ public abstract class JUnit4TestBase implements WrapsDriver {
           }
           break;
 
-        case PHANTOMJS:
-          if (browser == Browser.phantomjs) {
+        case REMOTE:
+          if (Boolean.getBoolean("selenium.browser.grid") ||
+              Boolean.getBoolean("selenium.browser.remote") ||
+              SauceDriver.shouldUseSauce()) {
             return true;
           }
           break;
 
-        case REMOTE:
-          if (Boolean.getBoolean("selenium.browser.remote") || SauceDriver.shouldUseSauce()) {
+        case GRID:
+          if (Boolean.getBoolean("selenium.browser.grid")) {
             return true;
           }
           break;

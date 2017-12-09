@@ -31,27 +31,28 @@ void MaximizeWindowCommandHandler::ExecuteInternal(
     const IECommandExecutor& executor,
     const ParametersMap& command_parameters,
     Response* response) {
-    int status_code = WD_SUCCESS;
+  int status_code = WD_SUCCESS;
 
-    BrowserHandle browser_wrapper;
-    status_code = executor.GetCurrentBrowser(&browser_wrapper);
-    if (status_code != WD_SUCCESS) {
-      response->SetErrorResponse(ERROR_NO_SUCH_WINDOW, "Error retrieving window");
-      return;
-    }
+  BrowserHandle browser_wrapper;
+  status_code = executor.GetCurrentBrowser(&browser_wrapper);
+  if (status_code != WD_SUCCESS) {
+    response->SetErrorResponse(ERROR_NO_SUCH_WINDOW, "Error retrieving window");
+    return;
+  }
 
-    HWND window_handle = browser_wrapper->GetTopLevelWindowHandle();
-    if (!::IsZoomed(window_handle)) {
-      ::ShowWindow(window_handle, SW_MAXIMIZE);
-    }
-    RECT window_rect;
-    ::GetWindowRect(window_handle, &window_rect);
-    Json::Value response_value;
-    response_value["width"] = window_rect.right - window_rect.left;
-    response_value["height"] = window_rect.bottom - window_rect.top;
-    response_value["x"] = window_rect.left;
-    response_value["y"] = window_rect.top;
-    response->SetSuccessResponse(response_value);
+  HWND window_handle = browser_wrapper->GetTopLevelWindowHandle();
+  if (!::IsZoomed(window_handle)) {
+    browser_wrapper->Restore();
+    ::ShowWindow(window_handle, SW_MAXIMIZE);
+  }
+  RECT window_rect;
+  ::GetWindowRect(window_handle, &window_rect);
+  Json::Value response_value;
+  response_value["width"] = window_rect.right - window_rect.left;
+  response_value["height"] = window_rect.bottom - window_rect.top;
+  response_value["x"] = window_rect.left;
+  response_value["y"] = window_rect.top;
+  response->SetSuccessResponse(response_value);
 }
 
 } // namespace webdriver

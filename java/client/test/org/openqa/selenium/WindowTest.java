@@ -24,7 +24,6 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assume.assumeFalse;
 import static org.openqa.selenium.Platform.ANDROID;
 import static org.openqa.selenium.Platform.LINUX;
-import static org.openqa.selenium.testing.Driver.PHANTOMJS;
 import static org.openqa.selenium.testing.Driver.SAFARI;
 
 import org.junit.Test;
@@ -98,15 +97,17 @@ public class WindowTest extends JUnit4TestBase {
     assumeFalse(TestUtilities.getEffectivePlatform(driver).is(ANDROID));
     Point position = driver.manage().window().getPosition();
 
-    assertThat(position.x, is(greaterThanOrEqualTo(0)));
-    assertThat(position.y, is(greaterThanOrEqualTo(0)));
+    // If the Chrome under test is launched by default as maximized, the window
+    // coordinates may have small negative values (note that elements in the
+    // viewport are, of course, still clickable).
+    assertThat(position.x, is(greaterThanOrEqualTo(-10)));
+    assertThat(position.y, is(greaterThanOrEqualTo(-10)));
   }
 
   @Test
   @Ignore(value = SAFARI,
       reason = "getPosition after setPosition doesn't match up exactly, " +
           "as expected - probably due to nuances in Mac OSX window manager.")
-  @Ignore(PHANTOMJS)
   public void testSetsThePositionOfTheCurrentWindow() throws InterruptedException {
     // Browser window cannot be resized or moved on ANDROID (and most mobile platforms
     // though others aren't defined in org.openqa.selenium.Platform).
@@ -134,7 +135,6 @@ public class WindowTest extends JUnit4TestBase {
   }
 
   @Test
-  @Ignore(PHANTOMJS)
   @Ignore(travis = true)
   public void testCanMaximizeTheWindow() throws InterruptedException {
     // Browser window cannot be resized or moved on ANDROID (and most mobile platforms
@@ -148,7 +148,6 @@ public class WindowTest extends JUnit4TestBase {
 
   @SwitchToTopAfterTest
   @Test
-  @Ignore(PHANTOMJS)
   @Ignore(travis = true)
   public void testCanMaximizeTheWindowFromFrame() throws InterruptedException {
     // Browser window cannot be resized or moved on ANDROID (and most mobile platforms
@@ -165,7 +164,6 @@ public class WindowTest extends JUnit4TestBase {
 
   @SwitchToTopAfterTest
   @Test
-  @Ignore(PHANTOMJS)
   @Ignore(travis = true)
   public void testCanMaximizeTheWindowFromIframe() throws InterruptedException {
     // Browser window cannot be resized or moved on ANDROID (and most mobile platforms

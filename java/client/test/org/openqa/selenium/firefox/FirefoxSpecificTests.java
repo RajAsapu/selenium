@@ -19,8 +19,6 @@ package org.openqa.selenium.firefox;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
-import org.openqa.selenium.firefox.internal.NewProfileExtensionConnectionTest;
-import org.openqa.selenium.firefox.internal.SocketLockTest;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
@@ -28,9 +26,7 @@ import org.openqa.selenium.firefox.internal.SocketLockTest;
     FirefoxOptionsTest.class,
     FirefoxProfileTest.class,
     MarionetteTest.class,
-    NewProfileExtensionConnectionTest.class,
     PreferencesTest.class,
-    SocketLockTest.class,
 })
 
 public class FirefoxSpecificTests {

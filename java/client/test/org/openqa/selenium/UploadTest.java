@@ -17,16 +17,20 @@
 
 package org.openqa.selenium;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assume.assumeFalse;
 import static org.openqa.selenium.Platform.ANDROID;
 import static org.openqa.selenium.WaitingConditions.elementTextToEqual;
 import static org.openqa.selenium.support.ui.ExpectedConditions.not;
 import static org.openqa.selenium.support.ui.ExpectedConditions.visibilityOf;
+import static org.openqa.selenium.testing.Driver.CHROME;
+import static org.openqa.selenium.testing.Driver.HTMLUNIT;
 import static org.openqa.selenium.testing.Driver.IE;
 import static org.openqa.selenium.testing.Driver.MARIONETTE;
-import static org.openqa.selenium.testing.Driver.PHANTOMJS;
 import static org.openqa.selenium.testing.Driver.SAFARI;
+import static org.openqa.selenium.testing.TestUtilities.catchThrowable;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
@@ -35,7 +39,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openqa.selenium.testing.Ignore;
 import org.openqa.selenium.testing.JUnit4TestBase;
-import org.openqa.selenium.testing.NotYetImplemented;
 import org.openqa.selenium.testing.SwitchToTopAfterTest;
 import org.openqa.selenium.testing.TestUtilities;
 
@@ -60,7 +63,6 @@ public class UploadTest extends JUnit4TestBase {
 
   @SwitchToTopAfterTest
   @Test
-  @NotYetImplemented(value = MARIONETTE, reason = "https://github.com/mozilla/geckodriver/issues/644")
   public void testFileUploading() throws Exception {
     assumeFalse(
         "This test as written assumes a file on local disk is accessible to the browser. "
@@ -82,15 +84,43 @@ public class UploadTest extends JUnit4TestBase {
 
   @Test
   @Ignore(IE)
-  @Ignore(PHANTOMJS)
   @Ignore(SAFARI)
-  @NotYetImplemented(value = MARIONETTE, reason = "https://github.com/mozilla/geckodriver/issues/644")
   public void testCleanFileInput() throws Exception {
     driver.get(pages.uploadPage);
     WebElement element = driver.findElement(By.id("upload"));
     element.sendKeys(testFile.getAbsolutePath());
     element.clear();
     assertEquals("", element.getAttribute("value"));
+  }
+
+  @Test
+  @Ignore(IE)
+  @Ignore(value = MARIONETTE, issue = "https://github.com/mozilla/geckodriver/issues/1011")
+  @Ignore(CHROME)
+  @Ignore(SAFARI)
+  @Ignore(HTMLUNIT)
+  public void testClickFileInput() throws Exception {
+    driver.get(pages.uploadPage);
+    WebElement element = driver.findElement(By.id("upload"));
+    Throwable ex = catchThrowable(element::click);
+    assertThat(ex, instanceOf(InvalidArgumentException.class));
+  }
+
+  @Test
+  public void testUploadingWithHiddenFileInput() throws Exception {
+    driver.get(appServer.whereIs("upload_invisible.html"));
+    driver.findElement(By.id("upload")).sendKeys(testFile.getAbsolutePath());
+    driver.findElement(By.id("go")).click();
+
+    // Uploading files across a network may take a while, even if they're really small
+    WebElement label = driver.findElement(By.id("upload_label"));
+    wait.until(not(visibilityOf(label)));
+
+    driver.switchTo().frame("upload_target");
+
+    WebElement body = driver.findElement(By.xpath("//body"));
+    wait.until(elementTextToEqual(body, LOREM_IPSUM_TEXT));
+
   }
 
   private File createTmpFile(String content) throws IOException {

@@ -1,4 +1,4 @@
-﻿// <copyright file="RemoteWebDriver.cs" company="WebDriver Committers">
+// <copyright file="RemoteWebDriver.cs" company="WebDriver Committers">
 // Licensed to the Software Freedom Conservancy (SFC) under one
 // or more contributor license agreements. See the NOTICE file
 // distributed with this work for additional information
@@ -1042,25 +1042,28 @@ namespace OpenQA.Selenium.Remote
         {
             List<IWebElement> toReturn = new List<IWebElement>();
             object[] elements = response.Value as object[];
-            foreach (object elementObject in elements)
+            if (elements != null)
             {
-                Dictionary<string, object> elementDictionary = elementObject as Dictionary<string, object>;
-                if (elementDictionary != null)
+                foreach (object elementObject in elements)
                 {
-                    // TODO: Remove this "if" logic once the spec is properly updated
-                    // and remote-end implementations comply.
-                    string id = string.Empty;
-                    if (elementDictionary.ContainsKey("element-6066-11e4-a52e-4f735466cecf"))
+                    Dictionary<string, object> elementDictionary = elementObject as Dictionary<string, object>;
+                    if (elementDictionary != null)
                     {
-                        id = (string)elementDictionary["element-6066-11e4-a52e-4f735466cecf"];
-                    }
-                    else if (elementDictionary.ContainsKey("ELEMENT"))
-                    {
-                        id = (string)elementDictionary["ELEMENT"];
-                    }
+                        // TODO: Remove this "if" logic once the spec is properly updated
+                        // and remote-end implementations comply.
+                        string id = string.Empty;
+                        if (elementDictionary.ContainsKey("element-6066-11e4-a52e-4f735466cecf"))
+                        {
+                            id = (string)elementDictionary["element-6066-11e4-a52e-4f735466cecf"];
+                        }
+                        else if (elementDictionary.ContainsKey("ELEMENT"))
+                        {
+                            id = (string)elementDictionary["ELEMENT"];
+                        }
 
-                    RemoteWebElement element = this.CreateElement(id);
-                    toReturn.Add(element);
+                        RemoteWebElement element = this.CreateElement(id);
+                        toReturn.Add(element);
+                    }
                 }
             }
 
@@ -1102,14 +1105,18 @@ namespace OpenQA.Selenium.Remote
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             parameters.Add("desiredCapabilities", this.GetLegacyCapabilitiesDictionary(desiredCapabilities));
 
-            Dictionary<string, object> firstMatchCapabilities = this.GetCapabilitiesDictionary(desiredCapabilities);
+            ISpecificationCompliant specCompliantCapabilities = desiredCapabilities as ISpecificationCompliant;
+            if (specCompliantCapabilities != null && specCompliantCapabilities.IsSpecificationCompliant)
+            {
+                Dictionary<string, object> firstMatchCapabilities = this.GetCapabilitiesDictionary(desiredCapabilities);
 
-            List<object> firstMatchCapabilitiesList = new List<object>();
-            firstMatchCapabilitiesList.Add(firstMatchCapabilities);
+                List<object> firstMatchCapabilitiesList = new List<object>();
+                firstMatchCapabilitiesList.Add(firstMatchCapabilities);
 
-            Dictionary<string, object> specCompliantCapabilities = new Dictionary<string, object>();
-            specCompliantCapabilities["firstMatch"] = firstMatchCapabilitiesList;
-            parameters.Add("capabilities", specCompliantCapabilities);
+                Dictionary<string, object> specCompliantCapabilitiesDictionary = new Dictionary<string, object>();
+                specCompliantCapabilitiesDictionary["firstMatch"] = firstMatchCapabilitiesList;
+                parameters.Add("capabilities", specCompliantCapabilitiesDictionary);
+            }
 
             Response response = this.Execute(DriverCommand.NewSession, parameters);
 
@@ -1430,6 +1437,9 @@ namespace OpenQA.Selenium.Remote
                             throw new InvalidSelectorException(errorMessage);
 
                         case WebDriverResult.NoSuchDriver:
+                            throw new WebDriverException(errorMessage);
+
+                        case WebDriverResult.InvalidArgument:
                             throw new WebDriverException(errorMessage);
 
                         default:

@@ -18,8 +18,8 @@
 import os
 import socket
 import subprocess
+import sys
 import time
-import urllib
 
 import pytest
 from _pytest.skipping import MarkEvaluator
@@ -29,6 +29,11 @@ from selenium.webdriver import DesiredCapabilities
 from test.selenium.webdriver.common.webserver import SimpleWebServer
 from test.selenium.webdriver.common.network import get_lan_ip
 
+if sys.version_info[0] == 3:
+    from urllib.request import urlopen
+else:
+    from urllib import urlopen
+
 drivers = (
     'BlackBerry',
     'Chrome',
@@ -36,9 +41,9 @@ drivers = (
     'Firefox',
     'Ie',
     'Marionette',
-    'PhantomJS',
     'Remote',
     'Safari',
+    'WebKitGTK',
 )
 
 
@@ -58,6 +63,9 @@ def pytest_ignore_collect(path, config):
     return len([d for d in _drivers if d.lower() in parts]) > 0
 
 
+driver_instance = None
+
+
 @pytest.fixture(scope='function')
 def driver(request):
     kwargs = {}
@@ -70,6 +78,13 @@ def driver(request):
     # conditionally mark tests as expected to fail based on driver
     request.node._evalxfail = request.node._evalxfail or MarkEvaluator(
         request.node, 'xfail_{0}'.format(driver_class.lower()))
+    if request.node._evalxfail.istrue():
+        def fin():
+            global driver_instance
+            if driver_instance is not None:
+                driver_instance.quit()
+            driver_instance = None
+        request.addfinalizer(fin)
 
     # skip driver instantiation if xfail(run=False)
     if not request.config.getoption('runxfail'):
@@ -78,21 +93,56 @@ def driver(request):
                 yield
                 return
 
-    if driver_class == 'BlackBerry':
-        kwargs.update({'device_password': 'password'})
-    if driver_class == 'Firefox':
-        kwargs.update({'capabilities': {'marionette': False}})
-    if driver_class == 'Marionette':
-        driver_class = 'Firefox'
-    if driver_class == 'Remote':
-        capabilities = DesiredCapabilities.FIREFOX.copy()
-        kwargs.update({'desired_capabilities': capabilities})
-    driver = getattr(webdriver, driver_class)(**kwargs)
-    yield driver
-    try:
-        driver.quit()
-    except:
-        pass
+    global driver_instance
+    if driver_instance is None:
+        if driver_class == 'BlackBerry':
+            kwargs.update({'device_password': 'password'})
+        if driver_class == 'Firefox':
+            kwargs.update({'capabilities': {'marionette': False}})
+        if driver_class == 'Marionette':
+            driver_class = 'Firefox'
+        if driver_class == 'Remote':
+            capabilities = DesiredCapabilities.FIREFOX.copy()
+            capabilities['marionette'] = False
+            kwargs.update({'desired_capabilities': capabilities})
+        if driver_class == 'WebKitGTK':
+            additional_args = {}
+            options = webdriver.WebKitGTKOptions()
+            options.overlay_scrollbars_enabled = False
+            browser_path = os.environ.get('WD_BROWSER_PATH')
+            if browser_path is not None:
+                options.browser_executable_path = browser_path
+            browser_args = os.environ.get('WD_BROWSER_ARGS')
+            if browser_args is not None:
+                for arg in browser_args.split():
+                    options.add_browser_argument(arg)
+            additional_args['options'] = options
+            driver_path = os.environ.get('WD_DRIVER_PATH')
+            if driver_path is not None:
+                additional_args['executable_path'] = driver_path
+            kwargs.update(additional_args)
+        driver_instance = getattr(webdriver, driver_class)(**kwargs)
+    yield driver_instance
+    if MarkEvaluator(request.node, 'no_driver_after_test').istrue():
+        driver_instance = None
+
+
+@pytest.fixture(scope='session', autouse=True)
+def stop_driver(request):
+    def fin():
+        global driver_instance
+        if driver_instance is not None:
+            driver_instance.quit()
+        driver_instance = None
+    request.addfinalizer(fin)
+
+
+def pytest_exception_interact(node, call, report):
+    if report.failed:
+        global driver_instance
+        if driver_instance is not None:
+            driver_instance.quit()
+        driver_instance = None
 
 
 @pytest.fixture
@@ -115,13 +165,13 @@ def server(request):
 
     _host = 'localhost'
     _port = 4444
-    _path = 'buck-out/gen/java/server/src/org/openqa/grid/selenium/selenium.jar'
+    _path = '../buck-out/gen/java/server/src/org/openqa/grid/selenium/selenium.jar'
 
     def wait_for_server(url, timeout):
         start = time.time()
         while time.time() - start < timeout:
             try:
-                urllib.urlopen(url)
+                urlopen(url)
                 return 1
             except IOError:
                 time.sleep(0.2)

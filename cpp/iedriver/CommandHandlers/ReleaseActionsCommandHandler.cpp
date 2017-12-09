@@ -19,6 +19,7 @@
 #include "../Alert.h"
 #include "../Browser.h"
 #include "../IECommandExecutor.h"
+#include "../InputManager.h"
 
 namespace webdriver {
 
@@ -38,6 +39,7 @@ void ReleaseActionsCommandHandler::ExecuteInternal(
     response->SetErrorResponse(status_code, "Unable to get current browser");
     return;
   }
+  executor.input_manager()->Reset(browser_wrapper);
   response->SetSuccessResponse(Json::Value::null);
 }
 

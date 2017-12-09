@@ -11,11 +11,11 @@ Selenium may be installed via npm with
     npm install selenium-webdriver
 
 You will need to download additional components to work with each of the major
-browsers. The drivers for Chrome, Firefox, PhantomJS, Opera, and
-Microsoft's IE and Edge web browsers are all standalone executables that should
-be placed on your system [PATH]. Apple's safaridriver is shipped with
-Safari 10 for OS X El Capitan and macOS Sierra. You will need to enable Remote
-Automation in the Develop menu of Safari 10 before testing.
+browsers. The drivers for Chrome, Firefox, and Microsoft's IE and Edge web
+browsers are all standalone executables that should be placed on your system
+[PATH]. Apple's safaridriver is shipped with Safari 10 for OS X El Capitan and
+macOS Sierra. You will need to enable Remote Automation in the Develop menu of
+Safari 10 before testing.
 
 
 | Browser           | Component                          |
@@ -24,8 +24,6 @@ Automation in the Develop menu of Safari 10 before testing.
 | Internet Explorer | [IEDriverServer.exe][release]      |
 | Edge              | [MicrosoftWebDriver.msi][edge]     |
 | Firefox           | [geckodriver(.exe)][geckodriver]   |
-| PhantomJS         | [phantomjs(.exe)][phantomjs]       |
-| Opera             | [operadriver(.exe)][opera]         |
 | Safari            | [safaridriver]                     |
 
 ## Usage
@@ -33,17 +31,14 @@ Automation in the Develop menu of Safari 10 before testing.
 The sample below and others are included in the `example` directory. You may
 also find the tests for selenium-webdriver informative.
 
-    var webdriver = require('selenium-webdriver'),
-        By = webdriver.By,
-        until = webdriver.until;
+    const {Builder, By, Key, until} = require('selenium-webdriver');
 
-    var driver = new webdriver.Builder()
+    let driver = new Builder()
         .forBrowser('firefox')
         .build();
 
     driver.get('http://www.google.com/ncr');
-    driver.findElement(By.name('q')).sendKeys('webdriver');
-    driver.findElement(By.name('btnG')).click();
+    driver.findElement(By.name('q')).sendKeys('webdriver', Key.RETURN);
     driver.wait(until.titleIs('webdriver - Google Search'), 1000);
     driver.quit();
 
@@ -219,8 +214,6 @@ under the License.
 [chrome]: http://chromedriver.storage.googleapis.com/index.html
 [gh]: https://github.com/SeleniumHQ/selenium/
 [issues]: https://github.com/SeleniumHQ/selenium/issues
-[opera]: https://github.com/operasoftware/operachromiumdriver/releases
-[phantomjs]: http://phantomjs.org/
 [edge]: http://go.microsoft.com/fwlink/?LinkId=619687
 [geckodriver]: https://github.com/mozilla/geckodriver/releases/
 [reduction]: http://www.webkit.org/quality/reduction.html

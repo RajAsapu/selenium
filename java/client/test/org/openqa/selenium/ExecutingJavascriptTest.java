@@ -31,12 +31,10 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
-import static org.openqa.selenium.testing.Driver.ALL;
 import static org.openqa.selenium.testing.Driver.CHROME;
 import static org.openqa.selenium.testing.Driver.HTMLUNIT;
 import static org.openqa.selenium.testing.Driver.IE;
 import static org.openqa.selenium.testing.Driver.MARIONETTE;
-import static org.openqa.selenium.testing.Driver.PHANTOMJS;
 import static org.openqa.selenium.testing.Driver.SAFARI;
 import static org.openqa.selenium.testing.TestUtilities.catchThrowable;
 
@@ -61,7 +59,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -160,9 +157,9 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
     assertTrue("result was: " + result + " (" + result.getClass() + ")", result instanceof Map);
     Map<String, Object> map = (Map<String, Object>) result;
 
-    Map<String, Object> expected = new HashMap<>();
-    expected.put("abc", "123");
-    expected.put("tired", false);
+    Map<String, Object> expected = ImmutableMap.of(
+      "abc", "123",
+      "tired", false);
 
     // Cannot do an exact match; Firefox 4 inserts a few extra keys in our object; this is OK, as
     // long as the expected keys are there.
@@ -179,18 +176,13 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   public void testShouldBeAbleToExecuteSimpleJavascriptAndReturnAnObjectLiteral() {
     driver.get(pages.javascriptPage);
 
-    Map<String, Object> expectedResult = new HashMap<String, Object>() {
-      {
-        put("foo", "bar");
-        put("baz", Arrays.asList("a", "b", "c"));
-        put("person", new HashMap<String, String>() {
-          {
-            put("first", "John");
-            put("last", "Doe");
-          }
-        });
-      }
-    };
+    Map<String, Object> expectedResult = ImmutableMap.of(
+        "foo", "bar",
+        "baz", Arrays.asList("a", "b", "c"),
+        "person", ImmutableMap.of(
+            "first", "John",
+            "last", "Doe")
+    );
 
     Object result = executeScript(
         "return {foo:'bar', baz: ['a', 'b', 'c'], " +
@@ -275,7 +267,6 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   @Test
   @Ignore(CHROME)
   @Ignore(IE)
-  @Ignore(PHANTOMJS)
   @Ignore(SAFARI)
   @Ignore(MARIONETTE)
   @NotYetImplemented(HTMLUNIT)
@@ -460,11 +451,11 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   @NeedsFreshDriver
   @NoDriverAfterTest
   @Test
-  @Ignore(value = ALL, reason = "Failure indicates hang condition, which would break the" +
-                                " test suite. Really needs a timeout set.")
-  public void testShouldThrowExceptionIfExecutingOnNoPage() {
-    Throwable t = catchThrowable(() -> executeScript("return 1;"));
-    assertThat(t, instanceOf(WebDriverException.class));
+  @NotYetImplemented(value = HTMLUNIT,
+      reason = "HtmlUnit: can't execute JavaScript before a page is loaded")
+  public void testShouldBeAbleToExecuteScriptOnNoPage() {
+    String text = (String) executeScript("return 'test';");
+    assertEquals(text, "test");
   }
 
   @Test
@@ -511,11 +502,8 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
 
     driver.get(pages.simpleTestPage);
 
-    Map<String, Object> args = new HashMap<String, Object>() {
-      {
-        put("key", Arrays.asList("a", new Object[]{"zero", 1, true, 3.14159, false, el}, "c"));
-      }
-    };
+    Map<String, Object> args = ImmutableMap.of(
+        "key", Arrays.asList("a", new Object[]{"zero", 1, true, 3.14159, false, el}, "c"));
 
     Throwable t = catchThrowable(() -> executeScript("return undefined;", args));
     assertThat(t, instanceOf(StaleElementReferenceException.class));
@@ -524,7 +512,6 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   @Test
   @Ignore(CHROME)
   @Ignore(IE)
-  @Ignore(PHANTOMJS)
   @Ignore(SAFARI)
   @Ignore(MARIONETTE)
   public void testShouldBeAbleToReturnADateObject() {
@@ -542,9 +529,8 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   @Test(timeout = 10000)
   @Ignore(CHROME)
   @Ignore(IE)
-  @Ignore(PHANTOMJS)
   @Ignore(SAFARI)
-  @Ignore(MARIONETTE)
+  @Ignore(value = MARIONETTE, issue = "https://github.com/mozilla/geckodriver/issues/904")
   public void shouldReturnDocumentElementIfDocumentIsReturned() {
     driver.get(pages.simpleTestPage);
 
@@ -552,5 +538,30 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
 
     assertTrue(value instanceof WebElement);
     assertTrue(((WebElement) value).getText().contains("A single line of text"));
+  }
+
+  @Test(timeout = 10000)
+  @Ignore(value = IE, reason = "returns WebElement")
+  @Ignore(SAFARI)
+  @Ignore(HTMLUNIT)
+  public void shouldHandleObjectThatThatHaveToJSONMethod() {
+    driver.get(pages.simpleTestPage);
+
+    Object value = executeScript("return window.performance.timing");
+
+    assertTrue(value instanceof Map);
+  }
+
+  @Test(timeout = 10000)
+  @Ignore(CHROME)
+  @Ignore(value = IE, issue = "540")
+  @Ignore(SAFARI)
+  @Ignore(HTMLUNIT)
+  public void shouldHandleRecursiveStructures() {
+    driver.get(pages.simpleTestPage);
+
+    Throwable t = catchThrowable(() -> executeScript(
+        "var obj1 = {}; var obj2 = {}; obj1['obj2'] = obj2; obj2['obj1'] = obj1; return obj1"));
+    assertThat(t, instanceOf(JavascriptException.class));
   }
 }
